@@ -24,12 +24,18 @@ public final class Lexer {
      * whitespace where appropriate.
      */
     public List<Token> lex() {
+        // Create a list to store the lexed tokens
         List<Token> lexTokens = new ArrayList<Token>();
         while (chars.has(0)) {
+            // If the current character is a whitespace, advance to the next character and reset the token size
             if (peek("\\s")) {
+                chars.advance();
                 chars.skip();
             }
-            lexTokens.add(lexToken());
+            // Otherwise, lex the character and add it to the list
+            else {
+                lexTokens.add(lexToken());
+            }
         }
         return lexTokens;
     }
@@ -46,7 +52,8 @@ public final class Lexer {
             if (peek("[A-Za-z_]")) {
                 return lexIdentifier();
             }
-            else if (peek("[0-9]") || (peek("[+-]") && chars.has(1))) {
+            else if (peek("[0-9]") || (peek("[+-]") && chars.has(1) &&
+                    Character.isDigit(chars.get(1)))) {
                 return lexNumber();
             }
             else if (peek("'")) {
@@ -59,29 +66,32 @@ public final class Lexer {
                 return lexOperator();
             }
         }
-        throw new ParseException("Unable to Parse.", chars.index);
+        return new Token(Token.Type.OPERATOR, "", chars.index);
     }
     public Token lexIdentifier() {
         if (!match("[A-Za-z_]")) {
-            return chars.emit(Token.Type.IDENTIFIER);
+            return new Token(Token.Type.IDENTIFIER, "", chars.index);
         }
         while (chars.has(0) && peek("[A-Za-z0-9_-]")) {
             match("[A-Za-z0-9_-]");
         }
         return chars.emit(Token.Type.IDENTIFIER);
     }
+
     public Token lexNumber() {
         boolean isDecimal = false;
         if (peek("0")) {
             match("0");
-            if (peek("[1-9]")) {
-                return chars.emit(Token.Type.INTEGER);
+            if (peek("[0-9]")) {
+                match("[0-9]");
+                return new Token(Token.Type.INTEGER, "", chars.index);
             }
         }
         if (peek("[+-]")) {
             match("[+-]");
             if (peek("0")) {
-                return chars.emit(Token.Type.INTEGER);
+                match("0");
+                return new Token(Token.Type.INTEGER, "", chars.index);
             }
         }
         while (chars.has(0)) {
@@ -92,7 +102,7 @@ public final class Lexer {
                     Character.isDigit(chars.get(1))) {
                 isDecimal = true;
                 match("\\.");
-                while (chars.has(0) && Character.isDigit(chars.get(0))) {
+                while (peek("[0-9]")) {
                     match("[0-9]");
                 }
             }
@@ -133,7 +143,13 @@ public final class Lexer {
             if (peek("\\\\")) {
                 match("\\\\");
                 lexEscape();
-            } else {
+            }
+            // If there is a literal newline, throw a parse exception
+            else if (peek("\n")) {
+                throw new ParseException("Missing Ending Double Quote.",
+                        chars.index);
+            }
+            else {
                 match(".");
             }
         }
@@ -160,7 +176,7 @@ public final class Lexer {
         else if (match("[^\\s]")) {
             return chars.emit(Token.Type.OPERATOR);
         }
-        throw new ParseException("Invalid operator.", chars.index);
+        return new Token(Token.Type.OPERATOR, "", chars.index);
     }
     /**
      * Returns true if the next sequence of characters match the given patterns,
