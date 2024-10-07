@@ -335,7 +335,7 @@ public final class Parser {
             }
             // Otherwise, throw a parse exception for the missing closed parentheses
             else {
-                throw new ParseException("Expected ')'", tokens.get(0).getIndex());
+                throw new ParseException("Expected ')'", tokens.get(-1).getIndex() + tokens.get(-1).getLiteral().length());
             }
         }
         // If an identifier is present and an opening parentheses follows, parse and add each expression to an array list
