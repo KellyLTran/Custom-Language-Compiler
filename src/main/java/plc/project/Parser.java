@@ -73,7 +73,7 @@ public final class Parser {
             }
             // Otherwise, throw a parse exception and compute the index for where the semicolon should have been
             else {
-                throw new ParseException("Expected ';'", tokens.get(-1).getIndex() + tokens.get(-1).getLiteral().length());
+                throw new ParseException("Expected ';'", getExceptionIndex());
             }
         }
         // If the "=" operator is not present, return only the left statement expression
@@ -82,7 +82,7 @@ public final class Parser {
             return new Ast.Statement.Expression(leftExpression);
         }
         else {
-            throw new ParseException("Expected ';'", tokens.get(-1).getIndex() + tokens.get(-1).getLiteral().length());
+            throw new ParseException("Expected ';'", getExceptionIndex());
         }
     }
 
@@ -221,7 +221,7 @@ public final class Parser {
                 match(Token.Type.IDENTIFIER);
             }
             else {
-                throw new ParseException("Expected identifier.", tokens.get(-1).getIndex() + tokens.get(-1).getLiteral().length());
+                throw new ParseException("Expected identifier.", getExceptionIndex());
             }
             // If an opening parentheses is present, match then create an array list
             if (peek("(")) {
@@ -335,7 +335,7 @@ public final class Parser {
             }
             // Otherwise, throw a parse exception for the missing closed parentheses
             else {
-                throw new ParseException("Expected ')'", tokens.get(-1).getIndex() + tokens.get(-1).getLiteral().length());
+                throw new ParseException("Expected ')'", getExceptionIndex());
             }
         }
         // If an identifier is present and an opening parentheses follows, parse and add each expression to an array list
@@ -349,9 +349,9 @@ public final class Parser {
                     expressionsList.add(parseExpression());
                     if (peek(",")) {
                         match(",");
-                        // If a closing parentheses immediately follows a common, then there is a trailing comma
+                        // If a closing parentheses immediately follows a comma, then there is a trailing comma
                         if (peek(")")) {
-                            throw new ParseException("Unexpected trailing comma before ')'", tokens.get(-1).getIndex() + tokens.get(-1).getLiteral().length());
+                            throw new ParseException("Unexpected trailing comma before ')'.", getExceptionIndex());
                         }
                     }
                 }
@@ -363,7 +363,7 @@ public final class Parser {
             }
         }
         else {
-            throw new ParseException("Invalid primary expression.", tokens.get(-1).getIndex() + tokens.get(-1).getLiteral().length());
+            throw new ParseException("Invalid primary expression.", getExceptionIndex());
         }
     }
 
@@ -397,6 +397,21 @@ public final class Parser {
             }
         }
         return true;
+    }
+
+    // Helper function to get the proper index for exceptions and ensure no index out of bounds errors
+    private int getExceptionIndex() {
+        // If the current token is still present, return its index to handle invalid tokens
+        if (tokens.has(0)) {
+            return tokens.get(0).getIndex();
+        }
+        // If index is greater than zero, compute and return the index based on last token and its literal length to handle missing tokens
+        else if (tokens.index > 0) {
+            return tokens.get(-1).getIndex() + tokens.get(-1).getLiteral().length();
+        }
+        else {
+            return 0;
+        }
     }
 
     /**
