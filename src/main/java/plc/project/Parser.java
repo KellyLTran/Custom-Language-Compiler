@@ -349,6 +349,10 @@ public final class Parser {
                     expressionsList.add(parseExpression());
                     if (peek(",")) {
                         match(",");
+                        // If a closing parentheses immediately follows a common, then there is a trailing comma
+                        if (peek(")")) {
+                            throw new ParseException("Unexpected trailing comma before ')'", tokens.get(-1).getIndex() + tokens.get(-1).getLiteral().length());
+                        }
                     }
                 }
                 match(")");
