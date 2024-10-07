@@ -71,9 +71,9 @@ public final class Parser {
                 match(";");
                 return new Ast.Statement.Assignment(leftExpression, rightExpression);
             }
-            // Otherwise, throw a parse exception for the missing semicolon
+            // Otherwise, throw a parse exception and compute the index for where the semicolon should have been
             else {
-                throw new ParseException("Expected ';'", tokens.get(-1).getIndex());
+                throw new ParseException("Expected ';'", tokens.get(-1).getIndex() + tokens.get(-1).getLiteral().length());
             }
         }
         // If the "=" operator is not present, return only the left statement expression
@@ -82,7 +82,7 @@ public final class Parser {
             return new Ast.Statement.Expression(leftExpression);
         }
         else {
-            throw new ParseException("Expected ';'", tokens.get(-1).getIndex());
+            throw new ParseException("Expected ';'", tokens.get(-1).getIndex() + tokens.get(-1).getLiteral().length());
         }
     }
 
