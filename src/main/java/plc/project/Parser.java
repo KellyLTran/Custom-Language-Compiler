@@ -187,23 +187,18 @@ public final class Parser {
     // statement ::=
     public Ast.Statement parseStatement() throws ParseException {
         if (peek("LET")) {
-            match("LET");
             return parseDeclarationStatement();
         }
         else if (peek("IF")) {
-            match("IF");
             return parseIfStatement();
         }
         else if (peek("FOR")) {
-            match("FOR");
             return parseForStatement();
         }
         else if (peek("WHILE")) {
-            match("WHILE");
             return parseWhileStatement();
         }
         else if (peek("RETURN")) {
-            match("RETURN");
             return parseReturnStatement();
         }
 
