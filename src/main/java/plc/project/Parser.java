@@ -75,7 +75,7 @@ public final class Parser {
 
                 // If the optional equal sign is present, match then assign and parse the expression
                 if (peek("=")) {
-                    match("=");
+                    match(Token.Type.OPERATOR);
                     optionalExpression = Optional.of(parseExpression());
                 }
                 // If the required semicolon ends the statement, return the field with the identifier, constant, and expression
@@ -185,38 +185,56 @@ public final class Parser {
      */
 
     // statement ::=
-    //    'LET' identifier ('=' expression)? ';' |
-    //    'IF' expression 'DO' statement* ('ELSE' statement*)? 'END' |
-    //    'FOR' '(' (identifier '=' expression)? ';' expression ';' (identifier '=' expression)? ')' statement* 'END' |
-    //    'WHILE' expression 'DO' statement* 'END' |
-    //    'RETURN' expression ';' |
-    //    expression ('=' expression)? ';'
     public Ast.Statement parseStatement() throws ParseException {
-        // Initialize the left expression with Ast.Expression
-        Ast.Expression leftExpression = parseExpression();
+        if (peek("LET")) {
+            match("LET");
+            return parseDeclarationStatement();
+        }
+        else if (peek("IF")) {
+            match("IF");
+            return parseIfStatement();
+        }
+        else if (peek("FOR")) {
+            match("FOR");
+            return parseForStatement();
+        }
+        else if (peek("WHILE")) {
+            match("WHILE");
+            return parseWhileStatement();
+        }
+        else if (peek("RETURN")) {
+            match("RETURN");
+            return parseReturnStatement();
+        }
 
-        // If the "=" operator is present, match as an operator token then initialize the right expression
-        if (peek("=")) {
-            match(Token.Type.OPERATOR);
-            Ast.Expression rightExpression = parseExpression();
+        //    expression ('=' expression)? ';'
+        else {
+            // Initialize the left expression with Ast.Expression
+            Ast.Expression leftExpression = parseExpression();
 
-            // If the statement ends with the required semicolon, return the statement assignment
-            if (peek(";")) {
-                match(";");
-                return new Ast.Statement.Assignment(leftExpression, rightExpression);
+            // If the "=" operator is present, match as an operator token then initialize the right expression
+            if (peek("=")) {
+                match(Token.Type.OPERATOR);
+                Ast.Expression rightExpression = parseExpression();
+
+                // If the statement ends with the required semicolon, return the statement assignment
+                if (peek(";")) {
+                    match(";");
+                    return new Ast.Statement.Assignment(leftExpression, rightExpression);
+                }
+                // Otherwise, throw a parse exception and compute the index for where the semicolon should have been
+                else {
+                    throw new ParseException("Expected ';'.", getExceptionIndex());
+                }
             }
-            // Otherwise, throw a parse exception and compute the index for where the semicolon should have been
+            // If the "=" operator is not present, return only the left statement expression
+            else if (peek(";")) {
+                match(";");
+                return new Ast.Statement.Expression(leftExpression);
+            }
             else {
                 throw new ParseException("Expected ';'.", getExceptionIndex());
             }
-        }
-        // If the "=" operator is not present, return only the left statement expression
-        else if (peek(";")) {
-            match(";");
-            return new Ast.Statement.Expression(leftExpression);
-        }
-        else {
-            throw new ParseException("Expected ';'.", getExceptionIndex());
         }
     }
 
@@ -225,8 +243,34 @@ public final class Parser {
      * method should only be called if the next tokens start a declaration
      * statement, aka {@code LET}.
      */
+    //    'LET' identifier ('=' expression)? ';' |
     public Ast.Statement.Declaration parseDeclarationStatement() throws ParseException {
-        throw new UnsupportedOperationException(); //TODO
+        String identifierToken = "";
+        Optional<Ast.Expression> optionalExpression = Optional.empty();
+        if (peek("LET")) {
+            match("LET");
+            if (peek(Token.Type.IDENTIFIER)) {
+                identifierToken = tokens.get(0).getLiteral();
+                match(Token.Type.IDENTIFIER);
+                if (peek("=")) {
+                    match("=");
+                    optionalExpression = Optional.of(parseExpression());
+                }
+                if (peek(";")) {
+                    match (";");
+                    return new Ast.Statement.Declaration(identifierToken, optionalExpression);
+                }
+                else {
+                    throw new ParseException("Expected ';'.", getExceptionIndex());
+                }
+            }
+            else {
+                throw new ParseException("Expected identifier.", getExceptionIndex());
+            }
+        }
+        else {
+            throw new ParseException("Expected 'LET'.", getExceptionIndex());
+        }
     }
 
     /**
@@ -234,6 +278,7 @@ public final class Parser {
      * should only be called if the next tokens start an if statement, aka
      * {@code IF}.
      */
+    //    'IF' expression 'DO' statement* ('ELSE' statement*)? 'END' |
     public Ast.Statement.If parseIfStatement() throws ParseException {
         throw new UnsupportedOperationException(); //TODO
     }
@@ -243,6 +288,7 @@ public final class Parser {
      * should only be called if the next tokens start a for statement, aka
      * {@code FOR}.
      */
+    //    'FOR' '(' (identifier '=' expression)? ';' expression ';' (identifier '=' expression)? ')' statement* 'END' |
     public Ast.Statement.For parseForStatement() throws ParseException {
         throw new UnsupportedOperationException(); //TODO
     }
@@ -252,6 +298,7 @@ public final class Parser {
      * should only be called if the next tokens start a while statement, aka
      * {@code WHILE}.
      */
+    //    'WHILE' expression 'DO' statement* 'END' |
     public Ast.Statement.While parseWhileStatement() throws ParseException {
         throw new UnsupportedOperationException(); //TODO
     }
@@ -261,6 +308,8 @@ public final class Parser {
      * should only be called if the next tokens start a return statement, aka
      * {@code RETURN}.
      */
+
+    //    'RETURN' expression ';' |
     public Ast.Statement.Return parseReturnStatement() throws ParseException {
         throw new UnsupportedOperationException(); //TODO
     }
