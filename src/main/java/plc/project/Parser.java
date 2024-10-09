@@ -38,10 +38,12 @@ public final class Parser {
         // While "LET" is present, parse and add each field to the fieldsList
         while (peek("LET")) {
             fieldsList.add(parseField());
+            match("LET");
         }
         // While "DEF" is present, parse and add each method to the methodsList
         while (peek("DEF")) {
             methodsList.add(parseMethod());
+            match("DEF");
         }
         return new Ast.Source(fieldsList, methodsList);
     }
@@ -55,33 +57,35 @@ public final class Parser {
 
         // Initialize the necessary variables for the Ast.Field method
         String identifierToken = "";
-        boolean constant = false;
-        Optional<Ast.Expression> expression = Optional.empty();
+        boolean constantFlag = false;
+        Optional<Ast.Expression> optionalExpression = Optional.empty();
+
+        // Check for the required LET keyword and the identifier that would follow
         if (peek("LET")) {
             match("LET");
 
-            // If the optional "CONST" is present, set the constant variable to true
+            // If the optional "CONST" is present, set the constantFlag variable to true
             if (peek("CONST")) {
                 match("CONST");
-                constant = true;
+                constantFlag = true;
             }
             if (peek(Token.Type.IDENTIFIER)) {
                 identifierToken = tokens.get(0).getLiteral();
                 match(Token.Type.IDENTIFIER);
 
-                // If an equal sign is present, match then assign and parse the expression
+                // If the optional equal sign is present, match then assign and parse the expression
                 if (peek("=")) {
                     match("=");
-                    expression = Optional.of(parseExpression());
+                    optionalExpression = Optional.of(parseExpression());
                 }
-                // If the semicolon is present, then all parts were valid, so return the field with the identifier, constant, and expression
+                // If the required semicolon ends the statement, return the field with the identifier, constant, and expression
                 if (peek(";")) {
                     match(";");
-                    return new Ast.Field(identifierToken, constant, expression);
+                    return new Ast.Field(identifierToken, constantFlag, optionalExpression);
                 }
-                // Otherwise, throw a parse exception for the missing required semicolon
+        // Otherwise, throw a parse exception for any missing required tokens
                 else {
-                    throw new ParseException("Expected ';'", getExceptionIndex());
+                    throw new ParseException("Expected ';'.", getExceptionIndex());
                 }
             }
             else {
@@ -99,7 +103,79 @@ public final class Parser {
      */
     // method ::= 'DEF' identifier '(' (identifier (',' identifier)*)? ')' 'DO' statement* 'END'
     public Ast.Method parseMethod() throws ParseException {
-        throw new UnsupportedOperationException(); //TODO
+
+        // Initialize the necessary variables for the Ast.Method method
+        String identifierToken = "";
+        List<String> parametersList = new ArrayList<>();
+        List<Ast.Statement> statementsList = new ArrayList<>();
+
+        // Check for the required DEF keyword, the identifier, and the opening parentheses that must follow
+        if (peek("DEF")) {
+            match("DEF");
+            if (peek(Token.Type.IDENTIFIER)) {
+                identifierToken = tokens.get(0).getLiteral();
+                match(Token.Type.IDENTIFIER);
+                if (peek("(")) {
+                    match("(");
+
+                    // If an optional identifier exists after the opening parentheses, parse and add it to the parametersList
+                    if (peek(Token.Type.IDENTIFIER)) {
+                        parametersList.add(tokens.get(0).getLiteral());
+                        match(Token.Type.IDENTIFIER);
+
+                        // While commas are present, parse and add each identifier to the parametersList
+                        while (peek(",")) {
+                            match(",");
+                            if (peek(Token.Type.IDENTIFIER)) {
+                                parametersList.add(tokens.get(0).getLiteral());
+                                match(Token.Type.IDENTIFIER);
+                            }
+
+                            // Otherwise, throw an exception if a comma is present without any identifiers following
+                            else {
+                                throw new ParseException("Expected identifier after ','", getExceptionIndex());
+                            }
+                        }
+                    }
+                    // Check for the required closing parentheses and the "DO" keyword that must follow
+                    if (peek(")")) {
+                        match(")");
+                        if (peek("DO")) {
+                            match("DO");
+
+                            // While the "END" keyword is not found yet, parse and add each statement to the statementsList
+                            while (!peek("END")) { // TODO: test for infinite loops
+                                statementsList.add(parseStatement());
+                            }
+                            // If the required "END" keyword ends the statement, return the method with the necessary arguments
+                            if (peek("END")) {
+                                match("END");
+                                return new Ast.Method(identifierToken, parametersList, statementsList);
+                            }
+        // Otherwise, throw a parse exception for any missing required tokens
+                            else {
+                                throw new ParseException("Expected 'END'.", getExceptionIndex());
+                            }
+                        }
+                        else {
+                            throw new ParseException("Expected 'DO'.", getExceptionIndex());
+                        }
+                    }
+                    else {
+                        throw new ParseException("Expected ')'.", getExceptionIndex());
+                    }
+                }
+                else {
+                    throw new ParseException("Expected '('.", getExceptionIndex());
+                }
+            }
+            else {
+                throw new ParseException("Expected identifier.", getExceptionIndex());
+            }
+        }
+        else {
+            throw new ParseException("Expected 'DEF'.", getExceptionIndex());
+        }
     }
 
     /**
@@ -131,7 +207,7 @@ public final class Parser {
             }
             // Otherwise, throw a parse exception and compute the index for where the semicolon should have been
             else {
-                throw new ParseException("Expected ';'", getExceptionIndex());
+                throw new ParseException("Expected ';'.", getExceptionIndex());
             }
         }
         // If the "=" operator is not present, return only the left statement expression
@@ -140,7 +216,7 @@ public final class Parser {
             return new Ast.Statement.Expression(leftExpression);
         }
         else {
-            throw new ParseException("Expected ';'", getExceptionIndex());
+            throw new ParseException("Expected ';'.", getExceptionIndex());
         }
     }
 
@@ -393,7 +469,7 @@ public final class Parser {
             }
             // Otherwise, throw a parse exception for the missing closed parentheses
             else {
-                throw new ParseException("Expected ')'", getExceptionIndex());
+                throw new ParseException("Expected ')'.", getExceptionIndex());
             }
         }
         // If an identifier is present and an opening parentheses follows, parse and add each expression to an array list
@@ -407,6 +483,7 @@ public final class Parser {
                     expressionsList.add(parseExpression());
                     if (peek(",")) {
                         match(",");
+
                         // If a closing parentheses immediately follows a comma, then there is a trailing comma
                         if (peek(")")) {
                             throw new ParseException("Unexpected trailing comma before ')'.", getExceptionIndex());
