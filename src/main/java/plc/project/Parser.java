@@ -275,7 +275,43 @@ public final class Parser {
      */
     //    'IF' expression 'DO' statement* ('ELSE' statement*)? 'END' |
     public Ast.Statement.If parseIfStatement() throws ParseException {
-        throw new UnsupportedOperationException(); //TODO
+        List<Ast.Statement> doStatementsList = new ArrayList<>();
+        List<Ast.Statement> elseStatementsList = new ArrayList<>();
+
+        // Check for the required "IF" keyword, then match and parse the expression that must follow
+        if (peek("IF")) {
+            match("IF");
+            Ast.Expression ifExpression = parseExpression();
+
+            if (peek("DO")) {
+                match("DO");
+                // While "ELSE" and "END" is not found yet, parse and add each statement following "DO" to the doStatementsList
+                while (!peek("ELSE") && !peek("END")) {
+                    doStatementsList.add(parseStatement());
+                }
+
+                // IF "ELSE" is found, parse and add each statement that follows to the elseStatementsList until "END" is found
+                if (peek("ELSE")) {
+                    match("ELSE");
+                    while (!peek("END")) {
+                        elseStatementsList.add(parseStatement());
+                    }
+                }
+                if (peek("END")) {
+                    match("END");
+                    return new Ast.Statement.If(ifExpression, doStatementsList, elseStatementsList);
+                }
+                else {
+                    throw new ParseException("Expected 'END'.", getExceptionIndex());
+                }
+            }
+            else {
+                throw new ParseException("Expected 'DO'.", getExceptionIndex());
+            }
+        }
+        else {
+            throw new ParseException("Expected 'IF'.", getExceptionIndex());
+        }
     }
 
     /**
