@@ -342,7 +342,20 @@ public final class Parser {
 
     //    'RETURN' expression ';' |
     public Ast.Statement.Return parseReturnStatement() throws ParseException {
-        throw new UnsupportedOperationException(); //TODO
+        if (peek("RETURN")) {
+            match("RETURN");
+            Ast.Expression returnExpression = parseExpression();
+            if (peek(";")) {
+                match(";");
+                return new Ast.Statement.Return(returnExpression);
+            }
+            else {
+                throw new ParseException("Expected ';'.", getExceptionIndex());
+            }
+        }
+        else {
+            throw new ParseException("Expected 'RETURN'.", getExceptionIndex());
+        }
     }
 
     /**
