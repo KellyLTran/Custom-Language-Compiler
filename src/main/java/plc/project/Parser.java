@@ -30,22 +30,74 @@ public final class Parser {
     /**
      * Parses the {@code source} rule.
      */
+    // source ::= field* method*
     public Ast.Source parseSource() throws ParseException {
-        throw new UnsupportedOperationException(); //TODO
+        List<Ast.Field> fieldsList = new ArrayList<>();
+        List<Ast.Method> methodsList = new ArrayList<>();
+
+        // While "LET" is present, parse and add each field to the fieldsList
+        while (peek("LET")) {
+            fieldsList.add(parseField());
+        }
+        // While "DEF" is present, parse and add each method to the methodsList
+        while (peek("DEF")) {
+            methodsList.add(parseMethod());
+        }
+        return new Ast.Source(fieldsList, methodsList);
     }
 
     /**
      * Parses the {@code field} rule. This method should only be called if the
      * next tokens start a field, aka {@code LET}.
      */
+    // field ::= 'LET' 'CONST'? identifier ('=' expression)? ';'
     public Ast.Field parseField() throws ParseException {
-        throw new UnsupportedOperationException(); //TODO
+
+        // Initialize the necessary variables for the Ast.Field method
+        String identifierToken = "";
+        boolean constant = false;
+        Optional<Ast.Expression> expression = Optional.empty();
+        if (peek("LET")) {
+            match("LET");
+
+            // If the optional "CONST" is present, set the constant variable to true
+            if (peek("CONST")) {
+                match("CONST");
+                constant = true;
+            }
+            if (peek(Token.Type.IDENTIFIER)) {
+                identifierToken = tokens.get(0).getLiteral();
+                match(Token.Type.IDENTIFIER);
+
+                // If an equal sign is present, match then assign and parse the expression
+                if (peek("=")) {
+                    match("=");
+                    expression = Optional.of(parseExpression());
+                }
+                // If the semicolon is present, then all parts were valid, so return the field with the identifier, constant, and expression
+                if (peek(";")) {
+                    match(";");
+                    return new Ast.Field(identifierToken, constant, expression);
+                }
+                // Otherwise, throw a parse exception for the missing required semicolon
+                else {
+                    throw new ParseException("Expected ';'", getExceptionIndex());
+                }
+            }
+            else {
+                throw new ParseException("Expected identifier.", getExceptionIndex());
+            }
+        }
+        else {
+            throw new ParseException("Expected 'LET'.", getExceptionIndex());
+        }
     }
 
     /**
      * Parses the {@code method} rule. This method should only be called if the
      * next tokens start a method, aka {@code DEF}.
      */
+    // method ::= 'DEF' identifier '(' (identifier (',' identifier)*)? ')' 'DO' statement* 'END'
     public Ast.Method parseMethod() throws ParseException {
         throw new UnsupportedOperationException(); //TODO
     }
@@ -56,7 +108,13 @@ public final class Parser {
      * statement, then it is an expression/assignment statement.
      */
 
-    // statement ::= ... | expression ('=' expression)? ';'
+    // statement ::=
+    //    'LET' identifier ('=' expression)? ';' |
+    //    'IF' expression 'DO' statement* ('ELSE' statement*)? 'END' |
+    //    'FOR' '(' (identifier '=' expression)? ';' expression ';' (identifier '=' expression)? ')' statement* 'END' |
+    //    'WHILE' expression 'DO' statement* 'END' |
+    //    'RETURN' expression ';' |
+    //    expression ('=' expression)? ';'
     public Ast.Statement parseStatement() throws ParseException {
         // Initialize the left expression with Ast.Expression
         Ast.Expression leftExpression = parseExpression();
@@ -213,7 +271,7 @@ public final class Parser {
         Ast.Expression leftExpression = parsePrimaryExpression();
         String identifierToken = "";
 
-        // If "." is present, an identifier must follow it
+        // If a period is present, an identifier must follow it
         while (peek(".")) {
             match(".");
             if (peek(Token.Type.IDENTIFIER)) {
@@ -367,6 +425,21 @@ public final class Parser {
         }
     }
 
+    // Helper function to get the proper index for exceptions and ensure no index out of bounds errors
+    private int getExceptionIndex() {
+        // If the current token is still present, return its index to handle invalid tokens
+        if (tokens.has(0)) {
+            return tokens.get(0).getIndex();
+        }
+        // If index is greater than zero, compute and return the index based on last token and its literal length to handle missing tokens
+        else if (tokens.index > 0) {
+            return tokens.get(-1).getIndex() + tokens.get(-1).getLiteral().length();
+        }
+        else {
+            return 0;
+        }
+    }
+
     /**
      * As in the lexer, returns {@code true} if the current sequence of tokens
      * matches the given patterns. Unlike the lexer, the pattern is not a regex;
@@ -397,21 +470,6 @@ public final class Parser {
             }
         }
         return true;
-    }
-
-    // Helper function to get the proper index for exceptions and ensure no index out of bounds errors
-    private int getExceptionIndex() {
-        // If the current token is still present, return its index to handle invalid tokens
-        if (tokens.has(0)) {
-            return tokens.get(0).getIndex();
-        }
-        // If index is greater than zero, compute and return the index based on last token and its literal length to handle missing tokens
-        else if (tokens.index > 0) {
-            return tokens.get(-1).getIndex() + tokens.get(-1).getLiteral().length();
-        }
-        else {
-            return 0;
-        }
     }
 
     /**
