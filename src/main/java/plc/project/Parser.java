@@ -550,8 +550,8 @@ public final class Parser {
                 charToken = charToken.replace("\\r", "\r");
                 charToken = charToken.replace("\\t", "\t");
                 charToken = charToken.replace("\\\"", "\"");
+                charToken = charToken.replace("\\'", "\'");
                 charToken = charToken.replace("\\\\", "\\");
-                charToken = charToken.replace("\\\'", "\'");
                 match(Token.Type.CHARACTER);
                 return new Ast.Expression.Literal(charToken.charAt(1));
             }
