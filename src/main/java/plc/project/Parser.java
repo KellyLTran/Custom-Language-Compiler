@@ -321,7 +321,7 @@ public final class Parser {
      */
     //    'FOR' '(' (identifier '=' expression)? ';' expression ';' (identifier '=' expression)? ')' statement* 'END' |
     public Ast.Statement.For parseForStatement() throws ParseException {
-        throw new UnsupportedOperationException(); //TODO
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -331,7 +331,30 @@ public final class Parser {
      */
     //    'WHILE' expression 'DO' statement* 'END' |
     public Ast.Statement.While parseWhileStatement() throws ParseException {
-        throw new UnsupportedOperationException(); //TODO
+        List<Ast.Statement> doStatementsList = new ArrayList<>();
+        if (peek("WHILE")) {
+            match("WHILE");
+            Ast.Expression whileExpression = parseExpression();
+            if (peek("DO")) {
+                match("DO");
+                while (!peek("END")) {
+                    doStatementsList.add(parseStatement());
+                }
+                if (peek("END")) {
+                    match("END");
+                    return new Ast.Statement.While(whileExpression, doStatementsList);
+                }
+                else {
+                    throw new ParseException("Expected 'END'.", getExceptionIndex());
+                }
+            }
+            else {
+                throw new ParseException("Expected 'DO'.", getExceptionIndex());
+            }
+        }
+        else {
+            throw new ParseException("Expected 'WHILE'.", getExceptionIndex());
+        }
     }
 
     /**
