@@ -248,7 +248,7 @@ public final class Parser {
                 identifierToken = tokens.get(0).getLiteral();
                 match(Token.Type.IDENTIFIER);
                 if (peek("=")) {
-                    match("=");
+                    match(Token.Type.OPERATOR);
                     optionalExpression = Optional.of(parseExpression());
                 }
                 if (peek(";")) {
@@ -321,7 +321,91 @@ public final class Parser {
      */
     //    'FOR' '(' (identifier '=' expression)? ';' expression ';' (identifier '=' expression)? ')' statement* 'END' |
     public Ast.Statement.For parseForStatement() throws ParseException {
-        throw new UnsupportedOperationException();
+        String identifierToken = "";
+        Ast.Statement identifierInitialization = null;             // (identifier '=' expression)? - optional
+        Ast.Expression forExpression;                              // ';' expression ';'
+        Ast.Statement identifierIncrement = null;                  // (identifier '=' expression)? - optional
+        List<Ast.Statement> forStatementsList = new ArrayList<>(); // statement* - optional
+
+        if (peek("FOR")) {
+            match("FOR");
+            if (peek("(")) {
+                match("(");
+
+                // Handle the first optional assignment of the expression to the identifier if it is present
+                if (peek(Token.Type.IDENTIFIER)) {
+                    identifierToken = tokens.get(0).getLiteral();
+                    match(Token.Type.IDENTIFIER);
+
+                    // If the equal operator is present, then parse the right expression and assign it to the identifier
+                    if (peek("=")) {
+                        match(Token.Type.OPERATOR);
+                        Ast.Expression rightExpression = parseExpression();
+                        identifierInitialization = new Ast.Statement.Assignment(
+                                new Ast.Expression.Access(Optional.empty(), identifierToken), rightExpression
+                        );
+                    }
+                    else {
+                        throw new ParseException("Expected '='.", getExceptionIndex());
+                    }
+                }
+                if (peek(";")) {
+                    match(";");
+
+                    // Parse the required expression in between the semicolons
+                    forExpression = parseExpression();
+                }
+                else {
+                    throw new ParseException("Expected ';'.", getExceptionIndex());
+                }
+                if (peek(";")) {
+                    match(";");
+
+                    // Handle the second optional assignment of the expression to the identifier if it is present
+                    if (peek(Token.Type.IDENTIFIER)) {
+                        identifierToken = tokens.get(0).getLiteral();
+                        match(Token.Type.IDENTIFIER);
+                        if (peek("=")) {
+                            match(Token.Type.OPERATOR);
+                            Ast.Expression rightExpression = parseExpression();
+                            identifierIncrement = new Ast.Statement.Assignment(
+                                    new Ast.Expression.Access(Optional.empty(), identifierToken), rightExpression
+                            );
+                        }
+                        else {
+                            throw new ParseException("Expected '='.", getExceptionIndex());
+                        }
+                    }
+                }
+                else {
+                    throw new ParseException("Expected ';'.", getExceptionIndex());
+                }
+                if (peek(")")) {
+                    match(")");
+                }
+                else {
+                    throw new ParseException("Expected ')'.", getExceptionIndex());
+                }
+
+                // While "END" is not found yet, parse and add each statement to the array list
+                while (!peek("END")) {
+                    forStatementsList.add(parseStatement());
+                }
+                if (peek("END")) {
+                    match("END");
+                    return new Ast.Statement.For(identifierInitialization, forExpression, identifierIncrement, forStatementsList);
+                }
+                else {
+                    throw new ParseException("Expected 'END'.", getExceptionIndex());
+                }
+            }
+            else {
+                    throw new ParseException("Expected '('.", getExceptionIndex());
+            }
+        }
+        else {
+            throw new ParseException("Expected 'FOR'.", getExceptionIndex());
+        }
     }
 
     /**
