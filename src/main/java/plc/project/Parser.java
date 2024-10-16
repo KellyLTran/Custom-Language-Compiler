@@ -34,16 +34,22 @@ public final class Parser {
     public Ast.Source parseSource() throws ParseException {
         List<Ast.Field> fieldsList = new ArrayList<>();
         List<Ast.Method> methodsList = new ArrayList<>();
+        boolean methodPresent = false;
 
-        // While "LET" is present, parse and add each field to the fieldsList
-        while (peek("LET")) {
-            fieldsList.add(parseField());
-            match("LET");
-        }
-        // While "DEF" is present, parse and add each method to the methodsList
-        while (peek("DEF")) {
-            methodsList.add(parseMethod());
-            match("DEF");
+        // While "LET" or "DEF" is present, parse and add each field to each respective list
+        while (peek("LET") || peek("DEF")) {
+            if (peek("LET")) {
+
+                // If a method has been parsed, fields cannot follow or else it is out of order
+                if (methodPresent) {
+                    throw new ParseException("Unexpected field.", getExceptionIndex());
+                }
+                fieldsList.add(parseField());
+            }
+            else if (peek("DEF")) {
+                methodPresent = true;
+                methodsList.add(parseMethod());
+            }
         }
         return new Ast.Source(fieldsList, methodsList);
     }
