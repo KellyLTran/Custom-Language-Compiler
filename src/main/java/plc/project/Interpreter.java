@@ -43,21 +43,22 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
 
     @Override
     public Environment.PlcObject visit(Ast.Field ast) {
-        Environment.PlcObject value;
+        Environment.PlcObject fieldValue;
 
         // If the field has an initial value, evaluate it
         if (ast.getValue().isPresent()) {
-            value = visit(ast.getValue().get());
+            fieldValue = visit(ast.getValue().get());
         }
         // Otherwise, use NIL as the default value for any variables not required to be initialized at declaration
         else {
-            value = Environment.NIL;
+            fieldValue = Environment.NIL;
         }
         // Define a variable in the current scope with the evaluated or default value then return NIL
-        scope.defineVariable(ast.getName(), ast.getConstant(), value);
+        scope.defineVariable(ast.getName(), ast.getConstant(), fieldValue);
         return Environment.NIL;
     }
 
+    // TODO: "The implementation of Ast.Method will catch any Return exceptions and complete the behavior"
     @Override
     public Environment.PlcObject visit(Ast.Method ast) {
         throw new UnsupportedOperationException(); //TODO
@@ -72,7 +73,16 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
 
     @Override
     public Environment.PlcObject visit(Ast.Statement.Declaration ast) {
-        throw new UnsupportedOperationException(); //TODO
+        Environment.PlcObject declarationValue;
+        if (ast.getValue().isPresent()) {
+            declarationValue = visit(ast.getValue().get());
+        }
+        else {
+            declarationValue = Environment.NIL;
+        }
+        // Define a local variable, which is never constant, in the current scope
+        scope.defineVariable(ast.getName(), false, declarationValue);
+        return Environment.NIL;
     }
 
     @Override
@@ -97,7 +107,9 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
 
     @Override
     public Environment.PlcObject visit(Ast.Statement.Return ast) {
-        throw new UnsupportedOperationException(); //TODO
+        // Evaluate the value and throw it inside a Return exception
+        Environment.PlcObject returnValue = visit(ast.getValue());
+        throw new Return(returnValue);
     }
 
     // Returns the literal value as a PlcObject
