@@ -19,11 +19,10 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
     }
 
 
-    // Evaluate globals (fields) followed by functions (methods) and return the result of calling the main/0 function
     @Override
     public Environment.PlcObject visit(Ast.Source ast)  {
 
-        // Call the visit method on each field in the source then call visit on each method
+        // Evaluate globals (fields) followed by functions (methods) by calling the visit method on each
         for (int i = 0; i < ast.getFields().size(); i++) {
             Ast.Field field = ast.getFields().get(i);
             visit(field);
@@ -32,12 +31,10 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
             Ast.Method method = ast.getMethods().get(i);
             visit(method);
         }
-
-        // Try to find and call the main/0 function and invoke an empty array list since main takes no arguments
+        // Return the result of calling the main/0 function and invoke an empty array list since main takes no arguments
         try {
             return scope.lookupFunction("main", 0).invoke(new ArrayList<>());
         }
-
         // If the evaluation fails, throw a Runtime Exception since the main function does not exist within the source
         catch (RuntimeException failedEvaluation) {
             throw new RuntimeException("Error: The main function does not exist within the source.", failedEvaluation);
@@ -46,7 +43,19 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
 
     @Override
     public Environment.PlcObject visit(Ast.Field ast) {
-        throw new UnsupportedOperationException(); //TODO
+        Environment.PlcObject value;
+
+        // If the field has an initial value, evaluate it
+        if (ast.getValue().isPresent()) {
+            value = visit(ast.getValue().get());
+        }
+        // Otherwise, use NIL as the default value for any variables not required to be initialized at declaration
+        else {
+            value = Environment.NIL;
+        }
+        // Define a variable in the current scope with the evaluated or default value then return NIL
+        scope.defineVariable(ast.getName(), ast.getConstant(), value);
+        return Environment.NIL;
     }
 
     @Override
