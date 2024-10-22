@@ -65,7 +65,9 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
 
     @Override
     public Environment.PlcObject visit(Ast.Statement.Expression ast) {
-        throw new UnsupportedOperationException(); //TODO
+        // Evaluate the expression and return NIL
+        visit(ast.getExpression());
+        return Environment.NIL;
     }
 
     @Override
@@ -98,9 +100,17 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
         throw new UnsupportedOperationException(); //TODO
     }
 
+    // Returns the literal value as a PlcObject
     @Override
     public Environment.PlcObject visit(Ast.Expression.Literal ast) {
-        throw new UnsupportedOperationException(); //TODO
+        // If the literal is null, return Environment.NIL
+        if (ast.getLiteral() == null) {
+            return Environment.NIL;
+        }
+        else {
+            // Otherwise, create a PlcObject containing the literal
+            return Environment.create(ast.getLiteral());
+        }
     }
 
     @Override
