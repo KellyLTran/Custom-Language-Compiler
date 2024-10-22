@@ -1,5 +1,7 @@
 package plc.project;
 
+import java.util.ArrayList;
+
 public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
 
     private Scope scope = new Scope(null);
@@ -17,9 +19,29 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
     }
 
 
+    // Evaluate globals (fields) followed by functions (methods) and return the result of calling the main/0 function
     @Override
     public Environment.PlcObject visit(Ast.Source ast)  {
-        throw new UnsupportedOperationException(); //TODO
+
+        // Call the visit method on each field in the source then call visit on each method
+        for (int i = 0; i < ast.getFields().size(); i++) {
+            Ast.Field field = ast.getFields().get(i);
+            visit(field);
+        }
+        for (int i = 0; i < ast.getMethods().size(); i++) {
+            Ast.Method method = ast.getMethods().get(i);
+            visit(method);
+        }
+
+        // Try to find and call the main/0 function and invoke an empty array list since main takes no arguments
+        try {
+            return scope.lookupFunction("main", 0).invoke(new ArrayList<>());
+        }
+
+        // If the evaluation fails, throw a Runtime Exception since the main function does not exist within the source
+        catch (RuntimeException failedEvaluation) {
+            throw new RuntimeException("Error: The main function does not exist within the source.", failedEvaluation);
+        }
     }
 
     @Override
