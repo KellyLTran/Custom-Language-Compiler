@@ -58,15 +58,41 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
         return Environment.NIL;
     }
 
-    // TODO: "The implementation of Ast.Method will catch any Return exceptions and complete the behavior"
     @Override
     public Environment.PlcObject visit(Ast.Method ast) {
-        throw new UnsupportedOperationException(); //TODO
+        // Define the function in the current scope as a lambda function
+        scope.defineFunction(ast.getName(), ast.getParameters().size(), args -> {
+            // Capture scope in a variable and set it to be a new child of the scope where the function was defined
+            Scope previousScope = scope;
+            scope = new Scope(previousScope);
+            try {
+                // Define variables for the incoming arguments, using the parameter names (Assume correct args provided)
+                for (int i = 0; i < ast.getParameters().size(); i++) {
+                    scope.defineVariable(ast.getParameters().get(i), false, args.get(i));
+                }
+                // Evaluate each statement
+                for (int i = 0; i < ast.getStatements().size(); i++) {
+                    visit(ast.getStatements().get(i));
+                }
+                // If no Return exception is thrown, return NIL
+                return Environment.NIL;
+            }
+            // Catch any Return exceptions and complete the behavior by returning value contained in a Return exception
+            catch (Return returnValue) {
+                return returnValue.value;
+            }
+            finally {
+                // Restore the scope when finished
+                scope = previousScope;
+            }
+        });
+        // Return NIL
+        return Environment.NIL;
     }
 
+    // Evaluate the expression and return NIL
     @Override
     public Environment.PlcObject visit(Ast.Statement.Expression ast) {
-        // Evaluate the expression and return NIL
         visit(ast.getExpression());
         return Environment.NIL;
     }
@@ -85,6 +111,11 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
         return Environment.NIL;
     }
 
+
+    // First, ensure that the receiver is an Ast.Expression.Access (any other type is not assignable causing the evaluation to fail).
+    // If that access expression has a receiver, evaluate it and set the associated field, otherwise lookup and set a variable in the current scope. Returns NIL.
+    // Assignments to a non-NIL, constant field will cause the evaluation to fail.
+    // Returns NIL.
     @Override
     public Environment.PlcObject visit(Ast.Statement.Assignment ast) {
         throw new UnsupportedOperationException(); //TODO
@@ -105,14 +136,14 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
         throw new UnsupportedOperationException(); //TODO
     }
 
+    // Evaluate the value and throw it inside a Return exception
     @Override
     public Environment.PlcObject visit(Ast.Statement.Return ast) {
-        // Evaluate the value and throw it inside a Return exception
         Environment.PlcObject returnValue = visit(ast.getValue());
         throw new Return(returnValue);
     }
 
-    // Returns the literal value as a PlcObject
+
     @Override
     public Environment.PlcObject visit(Ast.Expression.Literal ast) {
         // If the literal is null, return Environment.NIL
@@ -120,14 +151,15 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
             return Environment.NIL;
         }
         else {
-            // Otherwise, create a PlcObject containing the literal
+            // Otherwise, create and return a PlcObject containing the literal
             return Environment.create(ast.getLiteral());
         }
     }
 
+    // Evaluate the contained expression and return its value
     @Override
     public Environment.PlcObject visit(Ast.Expression.Group ast) {
-        throw new UnsupportedOperationException(); //TODO
+        return visit(ast.getExpression());
     }
 
     @Override
