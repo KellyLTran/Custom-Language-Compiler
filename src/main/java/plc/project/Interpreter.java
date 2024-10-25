@@ -1,6 +1,7 @@
 package plc.project;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
 
@@ -198,19 +199,30 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
         // If the expression has a receiver, evaluate it and return the value of the appropriate field
         if (ast.getReceiver().isPresent()) {
             Environment.PlcObject receiver = visit(ast.getReceiver().get());
-            return receiver.getField(ast.getName()).getValue();
+            return requireType(Environment.PlcObject.class, receiver).getField(ast.getName()).getValue();
         }
         // Otherwise, return the value of the appropriate variable in the current scope
         else {
             return scope.lookupVariable(ast.getName()).getValue();
         }
     }
-
-    // If the expression has a receiver, evaluate it and return the result of calling the appropriate method,
-    // otherwise return the value of invoking the appropriate function in the current scope with the evaluated arguments.
+    
     @Override
     public Environment.PlcObject visit(Ast.Expression.Function ast) {
-        throw new UnsupportedOperationException(); //TODO
+        List<Environment.PlcObject> functionArguments = new ArrayList<>();
+        for (int i = 0; i < ast.getArguments().size(); i++) {
+            Ast.Expression argument = ast.getArguments().get(i);
+            functionArguments.add(visit(argument));
+        }
+        // If the expression has a receiver, evaluate it and return the result of calling the appropriate method
+        if (ast.getReceiver().isPresent()) {
+            Environment.PlcObject receiver = visit(ast.getReceiver().get());
+            return requireType(Environment.PlcObject.class, receiver).callMethod(ast.getName(), functionArguments);
+        }
+        else {
+            // Otherwise, return value of invoking the appropriate function in the current scope with evaluated arguments.
+            return scope.lookupFunction(ast.getName(), functionArguments.size()).invoke(functionArguments);
+        }
     }
 
     /**
