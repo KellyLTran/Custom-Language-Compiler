@@ -83,7 +83,7 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
                 return returnValue.value;
             }
             finally {
-                // Restore the scope when finished
+                // Ensure that the scope is properly restored whether it fails or not
                 scope = previousScope;
             }
         });
@@ -121,30 +121,82 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
         throw new UnsupportedOperationException(); //TODO
     }
 
-
-    // Ensure the condition evaluates to a Boolean (hint: use requireType), otherwise the evaluation fails.
-    // Inside of a new scope, if the condition is TRUE, evaluate thenStatements, otherwise evaluate elseStatements. Returns NIL.
     @Override
     public Environment.PlcObject visit(Ast.Statement.If ast) {
-        throw new UnsupportedOperationException(); //TODO
+        // Use requireType to ensure the condition evaluates to a Boolean
+        Boolean condition = requireType(Boolean.class, visit(ast.getCondition()));
+
+        // Create a new scope
+        Scope previousScope = scope;
+        scope = new Scope(previousScope);
+
+        try {
+            List<Ast.Statement> thenStatements = ast.getThenStatements();
+            List<Ast.Statement> elseStatements = ast.getElseStatements();
+
+            // If the condition is TRUE, evaluate thenStatements
+            if (condition) {
+                for (int i = 0; i < thenStatements.size(); i++) {
+                    visit(thenStatements.get(i));
+                }
+            }
+            // Otherwise evaluate elseStatements
+            else {
+                for (int i = 0; i < elseStatements.size(); i++) {
+                    visit(elseStatements.get(i));
+                }
+            }
+        }
+        finally {
+            scope = previousScope;
+        }
+        return Environment.NIL;
     }
 
-    // Ensure the condition evaluates to a Boolean (hint: use requireType). If the condition is TRUE, evaluate the statements and repeat. Remember...
-    //the initialization step is performed a single time.
-    //to re-evaluate the condition each iteration.
-    //to perform the increment statement after all statements within the body of the for, but prior to re-evaluating the condition.
-    //Returns NIL.
     @Override
     public Environment.PlcObject visit(Ast.Statement.For ast) {
-        throw new UnsupportedOperationException(); //TODO
+        // Initialize the loop variable a single time
+        visit(ast.getInitialization());
+        Boolean condition = requireType(Boolean.class, visit(ast.getCondition()));
+
+        // Re-evaluate the condition for each iteration
+        while (condition) {
+            Scope previousScope = scope;
+            scope = new Scope(previousScope);
+
+            // If the condition is TRUE, evaluate the statements iteratively
+            try {
+                List<Ast.Statement> forStatements = ast.getStatements();
+                for (int i = 0; i < forStatements.size(); i++) {
+                    visit(forStatements.get(i));
+                }
+            }
+            finally {
+                scope = previousScope;
+            }
+            // Perform the increment statement before next re-evaluation
+            visit(ast.getIncrement());
+        }
+        return Environment.NIL;
     }
 
-    // Ensure the condition evaluates to a Boolean (hint: use requireType), otherwise the evaluation fails. If the condition is TRUE, evaluate the statements and repeat.
-    //Remember to re-evaluate the condition itself each iteration!
-    //Returns NIL.
     @Override
     public Environment.PlcObject visit(Ast.Statement.While ast) {
-        throw new UnsupportedOperationException(); //TODO
+        Boolean condition = requireType(Boolean.class, visit(ast.getCondition()));
+        while (condition) {
+            Scope previousScope = scope;
+            scope = new Scope(previousScope);
+            try {
+                List<Ast.Statement> whileStatements = ast.getStatements();
+                for (int i = 0; i < whileStatements.size(); i++) {
+                    visit(whileStatements.get(i));
+                }
+            }
+            finally {
+                scope = previousScope;
+            }
+        }
+        return Environment.NIL;
     }
 
     // Evaluate the value and throw it inside a Return exception
