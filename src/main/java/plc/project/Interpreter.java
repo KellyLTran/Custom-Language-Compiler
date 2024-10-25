@@ -111,7 +111,6 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
         return Environment.NIL;
     }
 
-
     // First, ensure that the receiver is an Ast.Expression.Access (any other type is not assignable causing the evaluation to fail).
     // If that access expression has a receiver, evaluate it and set the associated field, otherwise lookup and set a variable in the current scope. Returns NIL.
     // Assignments to a non-NIL, constant field will cause the evaluation to fail.
@@ -121,16 +120,27 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
         throw new UnsupportedOperationException(); //TODO
     }
 
+
+    // Ensure the condition evaluates to a Boolean (hint: use requireType), otherwise the evaluation fails.
+    // Inside of a new scope, if the condition is TRUE, evaluate thenStatements, otherwise evaluate elseStatements. Returns NIL.
     @Override
     public Environment.PlcObject visit(Ast.Statement.If ast) {
         throw new UnsupportedOperationException(); //TODO
     }
 
+    // Ensure the condition evaluates to a Boolean (hint: use requireType). If the condition is TRUE, evaluate the statements and repeat. Remember...
+    //the initialization step is performed a single time.
+    //to re-evaluate the condition each iteration.
+    //to perform the increment statement after all statements within the body of the for, but prior to re-evaluating the condition.
+    //Returns NIL.
     @Override
     public Environment.PlcObject visit(Ast.Statement.For ast) {
         throw new UnsupportedOperationException(); //TODO
     }
 
+    // Ensure the condition evaluates to a Boolean (hint: use requireType), otherwise the evaluation fails. If the condition is TRUE, evaluate the statements and repeat.
+    //Remember to re-evaluate the condition itself each iteration!
+    //Returns NIL.
     @Override
     public Environment.PlcObject visit(Ast.Statement.While ast) {
         throw new UnsupportedOperationException(); //TODO
@@ -142,7 +152,6 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
         Environment.PlcObject returnValue = visit(ast.getValue());
         throw new Return(returnValue);
     }
-
 
     @Override
     public Environment.PlcObject visit(Ast.Expression.Literal ast) {
@@ -162,6 +171,22 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
         return visit(ast.getExpression());
     }
 
+    // Evaluates arguments based on the specific binary operator, returning the appropriate result for the operation (hint: use requireType and Environment.create as needed).  Whenever something is observed but not permitted, the evaluation fails.
+    //&&/||:
+    //Evaluate the LHS expression, which must be a Boolean. Following short circuiting rules, evaluate the LHS expression, which also must be a Boolean, if necessary.
+    //</<=/>/>=:
+    //Evaluate the LHS expression, which must be Comparable, and compare it to the RHS expression, which must be the same type (class) as the LHS.
+    //You will need to determine how to use Comparable (hint: review our lectures at the beginning of the semester and check out the Java docs).
+    //==/!=:
+    //Evaluate both operands and test for equality using Objects.equals (this is not the standard equals method, consider what this does by reading the Java docs and recalling what we have said about ==/!= ).
+    //+:
+    //Evaluate both the LHS and RHS expressions. If either expression is a String, the result is their concatenation. Else, if the LHS is a BigInteger/BigDecimal, then the RHS must also be the same type (a BigInteger/BigDecimal) and the result is their addition, otherwise the evaluation fails.
+    //-/*:
+    //Evaluate both the LHS and RHS expressions. If the LHS is a BigInteger/BigDecimal, then the RHS must also be the same type (a BigInteger/BigDecimal) and the result is their subtraction/multiplication, otherwise the evaluation fails.
+    //Evaluate both the LHS and RHS expressions. If the LHS is a BigInteger/BigDecimal, then the RHS must also be the same type (a BigInteger/BigDecimal) and the result is their division, otherwise throw an exception.
+    //For BigDecimal, use RoundingMode.HALF_EVEN, which rounds midpoints to the nearest even value (1.5, 2.5
+    // 2.0). This is actually the default mode in Python, which can catch developers off-guard as they often do not expect this behavior.
+    //If the denominator is zero, the evaluation fails.
     @Override
     public Environment.PlcObject visit(Ast.Expression.Binary ast) {
         throw new UnsupportedOperationException(); //TODO
@@ -169,9 +194,20 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
 
     @Override
     public Environment.PlcObject visit(Ast.Expression.Access ast) {
-        throw new UnsupportedOperationException(); //TODO
+
+        // If the expression has a receiver, evaluate it and return the value of the appropriate field
+        if (ast.getReceiver().isPresent()) {
+            Environment.PlcObject receiver = visit(ast.getReceiver().get());
+            return receiver.getField(ast.getName()).getValue();
+        }
+        // Otherwise, return the value of the appropriate variable in the current scope
+        else {
+            return scope.lookupVariable(ast.getName()).getValue();
+        }
     }
 
+    // If the expression has a receiver, evaluate it and return the result of calling the appropriate method,
+    // otherwise return the value of invoking the appropriate function in the current scope with the evaluated arguments.
     @Override
     public Environment.PlcObject visit(Ast.Expression.Function ast) {
         throw new UnsupportedOperationException(); //TODO
