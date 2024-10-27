@@ -112,13 +112,31 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
         return Environment.NIL;
     }
 
-    // First, ensure that the receiver is an Ast.Expression.Access (any other type is not assignable causing the evaluation to fail).
-    // If that access expression has a receiver, evaluate it and set the associated field, otherwise lookup and set a variable in the current scope. Returns NIL.
-    // Assignments to a non-NIL, constant field will cause the evaluation to fail.
-    // Returns NIL.
     @Override
     public Environment.PlcObject visit(Ast.Statement.Assignment ast) {
-        throw new UnsupportedOperationException(); //TODO
+        // Ensure that the receiver is an Ast.Expression.Access to ensure it is assignable
+        if (!(ast.getReceiver() instanceof Ast.Expression.Access)) {
+            throw new RuntimeException("Invalid receiver.");
+        }
+        Ast.Expression.Access assignmentReceiver = (Ast.Expression.Access) ast.getReceiver();
+        Environment.PlcObject assignmentValue = visit(ast.getValue());
+
+        // If that access expression has a receiver, evaluate it and set the associated field
+        if (assignmentReceiver.getReceiver().isPresent()) {
+            Environment.PlcObject fieldValue = visit(assignmentReceiver.getReceiver().get());
+            fieldValue.getField(assignmentReceiver.getName()).setValue(assignmentValue);
+        }
+        // Otherwise, lookup and set a variable in the current scope
+        else {
+            Environment.Variable variable = scope.lookupVariable(assignmentReceiver.getName());
+
+            // Assign to a non-NIL since constant field will cause the evaluation to fail.
+            if (variable.getConstant()) {
+                throw new RuntimeException("Invalid assignment.");
+            }
+            variable.setValue(assignmentValue);
+        }
+        return Environment.NIL;
     }
 
     @Override
@@ -242,6 +260,7 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
     //If the denominator is zero, the evaluation fails.
     @Override
     public Environment.PlcObject visit(Ast.Expression.Binary ast) {
+
         throw new UnsupportedOperationException(); //TODO
     }
 
@@ -250,8 +269,8 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
 
         // If the expression has a receiver, evaluate it and return the value of the appropriate field
         if (ast.getReceiver().isPresent()) {
-            Environment.PlcObject receiver = visit(ast.getReceiver().get());
-            return requireType(Environment.PlcObject.class, receiver).getField(ast.getName()).getValue();
+            Environment.PlcObject accessReceiver = visit(ast.getReceiver().get());
+            return requireType(Environment.PlcObject.class, accessReceiver).getField(ast.getName()).getValue();
         }
         // Otherwise, return the value of the appropriate variable in the current scope
         else {
@@ -268,8 +287,8 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
         }
         // If the expression has a receiver, evaluate it and return the result of calling the appropriate method
         if (ast.getReceiver().isPresent()) {
-            Environment.PlcObject receiver = visit(ast.getReceiver().get());
-            return requireType(Environment.PlcObject.class, receiver).callMethod(ast.getName(), functionArguments);
+            Environment.PlcObject functionReceiver = visit(ast.getReceiver().get());
+            return requireType(Environment.PlcObject.class, functionReceiver).callMethod(ast.getName(), functionArguments);
         }
         else {
             // Otherwise, return value of invoking the appropriate function in the current scope with evaluated arguments.
