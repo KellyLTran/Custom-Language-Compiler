@@ -307,28 +307,32 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
             return Environment.create(!Objects.equals(leftExpression.getValue(), rightExpression.getValue()));
         }
 
-        if (ast.getOperator().equals("+")) {
+        else if (ast.getOperator().equals("+")) {
             Environment.PlcObject rightExpression = visit(ast.getRight());
 
-            // If either expression is a String, the result is their concatenation
-            if (requireType(String.class, leftExpression) != null || requireType(String.class, rightExpression) != null) {
+            try {
+                // If either expression is a String, the result is their concatenation
                 String leftString = requireType(String.class, leftExpression);
                 String rightString = requireType(String.class, rightExpression);
                 return Environment.create(leftString + rightString);
             }
-            // If the LHS is a BigInteger/BigDecimal, then the RHS must also be the same type, and the result is their addition
-            if (requireType(BigInteger.class, leftExpression) != null) {
-                BigInteger leftBigInt = requireType(BigInteger.class, leftExpression);
-                BigInteger rightBigInt = requireType(BigInteger.class, rightExpression);
-                return Environment.create(leftBigInt.add(rightBigInt));
-            }
-            if (requireType(BigDecimal.class, leftExpression) != null) {
-                BigDecimal leftBigDec = requireType(BigDecimal.class, leftExpression);
-                BigDecimal rightBigDec = requireType(BigDecimal.class, rightExpression);
-                return Environment.create(leftBigDec.add(rightBigDec));
-            }
-            throw new RuntimeException("Operands must be of the same type.");
 
+            // If the string concatenation failed, try treating LHS as a BigInteger
+            catch (RuntimeException failedEvaluation) {
+                try {
+                    // If the LHS is a BigInteger, then the RHS must also be the same type, and the result is their addition
+                    BigInteger leftBigInt = requireType(BigInteger.class, leftExpression);
+                    BigInteger rightBigInt = requireType(BigInteger.class, rightExpression);
+                    return Environment.create(leftBigInt.add(rightBigInt));
+                }
+
+                // Otherwise, it must be a BigDecimal
+                catch (RuntimeException failedEvaluation2) {
+                    BigDecimal leftBigDec = requireType(BigDecimal.class, leftExpression);
+                    BigDecimal rightBigDec = requireType(BigDecimal.class, rightExpression);
+                    return Environment.create(leftBigDec.add(rightBigDec));
+                }
+            }
         }
 
         // Handle subtraction for BigInteger/BigDecimal and ensure they are the same type
