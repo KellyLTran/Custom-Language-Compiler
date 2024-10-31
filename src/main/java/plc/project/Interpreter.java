@@ -2,6 +2,10 @@ package plc.project;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.Objects;
+import java.math.RoundingMode;
 
 public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
 
@@ -38,7 +42,7 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
         }
         // If the evaluation fails, throw a Runtime Exception since the main function does not exist within the source
         catch (RuntimeException failedEvaluation) {
-            throw new RuntimeException("Error: The main function does not exist within the source.", failedEvaluation);
+            throw new RuntimeException("The main function does not exist within the source.", failedEvaluation);
         }
     }
 
@@ -141,8 +145,6 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
 
     @Override
     public Environment.PlcObject visit(Ast.Statement.If ast) {
-        // Use requireType to ensure the condition evaluates to a Boolean
-        Boolean condition = requireType(Boolean.class, visit(ast.getCondition()));
 
         // Create a new scope
         Scope previousScope = scope;
@@ -152,8 +154,8 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
             List<Ast.Statement> thenStatements = ast.getThenStatements();
             List<Ast.Statement> elseStatements = ast.getElseStatements();
 
-            // If the condition is TRUE, evaluate thenStatements
-            if (condition) {
+            // Use requireType to ensure the condition evaluates to a Boolean and evaluate thenStatements if TRUE
+            if (requireType(Boolean.class, visit(ast.getCondition()))) {
                 for (int i = 0; i < thenStatements.size(); i++) {
                     visit(thenStatements.get(i));
                 }
@@ -175,10 +177,9 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
     public Environment.PlcObject visit(Ast.Statement.For ast) {
         // Initialize the loop variable a single time
         visit(ast.getInitialization());
-        Boolean condition = requireType(Boolean.class, visit(ast.getCondition()));
 
         // Re-evaluate the condition for each iteration
-        while (condition) {
+        while (requireType(Boolean.class, visit(ast.getCondition()))) {
             Scope previousScope = scope;
             scope = new Scope(previousScope);
 
@@ -200,8 +201,7 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
 
     @Override
     public Environment.PlcObject visit(Ast.Statement.While ast) {
-        Boolean condition = requireType(Boolean.class, visit(ast.getCondition()));
-        while (condition) {
+        while (requireType(Boolean.class, visit(ast.getCondition()))) {
             Scope previousScope = scope;
             scope = new Scope(previousScope);
             try {
@@ -242,31 +242,157 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
         return visit(ast.getExpression());
     }
 
-    // Evaluates arguments based on the specific binary operator, returning the appropriate result for the operation (hint: use requireType and Environment.create as needed).  Whenever something is observed but not permitted, the evaluation fails.
-    //&&/||:
-    //Evaluate the LHS expression, which must be a Boolean. Following short circuiting rules, evaluate the LHS expression, which also must be a Boolean, if necessary.
-    //</<=/>/>=:
-    //Evaluate the LHS expression, which must be Comparable, and compare it to the RHS expression, which must be the same type (class) as the LHS.
-    //You will need to determine how to use Comparable (hint: review our lectures at the beginning of the semester and check out the Java docs).
-    //==/!=:
-    //Evaluate both operands and test for equality using Objects.equals (this is not the standard equals method, consider what this does by reading the Java docs and recalling what we have said about ==/!= ).
-    //+:
-    //Evaluate both the LHS and RHS expressions. If either expression is a String, the result is their concatenation. Else, if the LHS is a BigInteger/BigDecimal, then the RHS must also be the same type (a BigInteger/BigDecimal) and the result is their addition, otherwise the evaluation fails.
-    //-/*:
-    //Evaluate both the LHS and RHS expressions. If the LHS is a BigInteger/BigDecimal, then the RHS must also be the same type (a BigInteger/BigDecimal) and the result is their subtraction/multiplication, otherwise the evaluation fails.
-    //Evaluate both the LHS and RHS expressions. If the LHS is a BigInteger/BigDecimal, then the RHS must also be the same type (a BigInteger/BigDecimal) and the result is their division, otherwise throw an exception.
-    //For BigDecimal, use RoundingMode.HALF_EVEN, which rounds midpoints to the nearest even value (1.5, 2.5
-    // 2.0). This is actually the default mode in Python, which can catch developers off-guard as they often do not expect this behavior.
-    //If the denominator is zero, the evaluation fails.
+    // Evaluates arguments based on the specific binary operator, returning the appropriate result for the operation
     @Override
     public Environment.PlcObject visit(Ast.Expression.Binary ast) {
+        // Evaluate and store the left-hand side (LHS) expression for later use
+        Environment.PlcObject leftExpression = visit(ast.getLeft());
 
-        throw new UnsupportedOperationException(); //TODO
+        if (ast.getOperator().equals("&&")) {
+            // If left expression is not a boolean, return false
+            // Not necessary to evaluate right since "&&" requires both true (short circuiting rules)
+            if (!requireType(Boolean.class, leftExpression)) {
+                return Environment.create(false);
+            }
+            // Otherwise, evaluate the right-hand side (RHS) expression and return based on if it is a boolean or not
+            Environment.PlcObject rightExpression = visit(ast.getRight());
+            return Environment.create(requireType(Boolean.class, rightExpression));
+        }
+        // If left is a boolean, return true without evaluating right since "||" requires only one to be true
+        else if (ast.getOperator().equals("||")) {
+            if (requireType(Boolean.class, leftExpression)) {
+                return Environment.create(true);
+            }
+            Environment.PlcObject rightExpression = visit(ast.getRight());
+            return Environment.create(requireType(Boolean.class, rightExpression));
+        }
+        else if (ast.getOperator().equals("<") || ast.getOperator().equals("<=") ||
+                ast.getOperator().equals(">") || ast.getOperator().equals(">=")) {
+
+            // Evaluate both sides and ensure each are Comparable
+            Environment.PlcObject rightExpression = visit(ast.getRight());
+            Comparable leftComparable = requireType(Comparable.class, leftExpression);
+            Comparable rightComparable = requireType(Comparable.class, rightExpression);
+
+            // Ensure both operands are the same type (class)
+            if (!leftComparable.getClass().equals(rightComparable.getClass())) {
+                throw new RuntimeException("Operands must be of the same type.");
+            }
+
+            // Get and return the comparison result (-1 for less, 0 for equal, 1 for greater)
+            int comparison = leftComparable.compareTo(rightComparable);
+            boolean result;
+            if (ast.getOperator().equals("<")) {
+                result = (comparison < 0);
+            }
+            else if (ast.getOperator().equals("<=")) {
+                result = (comparison <= 0);
+            }
+            else if (ast.getOperator().equals(">")) {
+                result = (comparison > 0);
+            }
+            else {
+                result = (comparison >= 0);
+            }
+            return Environment.create(result);
+        }
+
+        // Use Objects.equals to test for equality after evaluating both operands
+        else if (ast.getOperator().equals("==")) {
+            Environment.PlcObject rightExpression = visit(ast.getRight());
+            return Environment.create(Objects.equals(leftExpression.getValue(), rightExpression.getValue()));
+        }
+        else if (ast.getOperator().equals("!=")) {
+            Environment.PlcObject rightExpression = visit(ast.getRight());
+            return Environment.create(!Objects.equals(leftExpression.getValue(), rightExpression.getValue()));
+        }
+
+        else if (ast.getOperator().equals("+")) {
+            Environment.PlcObject rightExpression = visit(ast.getRight());
+
+            try {
+                // If either expression is a String, the result is their concatenation
+                String leftString = requireType(String.class, leftExpression);
+                String rightString = requireType(String.class, rightExpression);
+                return Environment.create(leftString + rightString);
+            }
+            // If the string concatenation failed, try treating LHS as a BigInteger
+            catch (RuntimeException failedEvaluation) {
+                try {
+                    // If the LHS is a BigInteger, then the RHS must also be the same type, and the result is their addition
+                    BigInteger leftBigInt = requireType(BigInteger.class, leftExpression);
+                    BigInteger rightBigInt = requireType(BigInteger.class, rightExpression);
+                    return Environment.create(leftBigInt.add(rightBigInt));
+                }
+                // Otherwise, it must be a BigDecimal
+                catch (RuntimeException failedEvaluation2) {
+                    BigDecimal leftBigDec = requireType(BigDecimal.class, leftExpression);
+                    BigDecimal rightBigDec = requireType(BigDecimal.class, rightExpression);
+                    return Environment.create(leftBigDec.add(rightBigDec));
+                }
+            }
+        }
+
+        // Handle subtraction for BigInteger/BigDecimal and ensure they are the same type
+        else if (ast.getOperator().equals("-")) {
+            Environment.PlcObject rightExpression = visit(ast.getRight());
+            try {
+                BigInteger leftBigInt = requireType(BigInteger.class, leftExpression);
+                BigInteger rightBigInt = requireType(BigInteger.class, rightExpression);
+                return Environment.create(leftBigInt.subtract(rightBigInt));
+            }
+            catch (RuntimeException failedEvaluation) {
+                BigDecimal leftBigDec = requireType(BigDecimal.class, leftExpression);
+                BigDecimal rightBigDec = requireType(BigDecimal.class, rightExpression);
+                return Environment.create(leftBigDec.subtract(rightBigDec));
+            }
+        }
+
+        // Handle multiplication for BigInteger/BigDecimal and ensure they are the same type
+        else if (ast.getOperator().equals("*")) {
+            Environment.PlcObject rightExpression = visit(ast.getRight());
+            try {
+                BigInteger leftBigInt = requireType(BigInteger.class, leftExpression);
+                BigInteger rightBigInt = requireType(BigInteger.class, rightExpression);
+                return Environment.create(leftBigInt.multiply(rightBigInt));
+            }
+            catch (RuntimeException failedEvaluation) {
+                BigDecimal leftBigDec = requireType(BigDecimal.class, leftExpression);
+                BigDecimal rightBigDec = requireType(BigDecimal.class, rightExpression);
+                return Environment.create(leftBigDec.multiply(rightBigDec));
+            }
+        }
+
+        // Handle division for BigInteger/BigDecimal and ensure they are the same type
+        else if (ast.getOperator().equals("/")) {
+            Environment.PlcObject rightExpression = visit(ast.getRight());
+            try {
+                BigInteger leftBigInt = requireType(BigInteger.class, leftExpression);
+                BigInteger rightBigInt = requireType(BigInteger.class, rightExpression);
+                if (rightBigInt.equals(BigInteger.ZERO)) {
+                    throw new RuntimeException("Division by zero.");
+                }
+                return Environment.create(leftBigInt.divide(rightBigInt));
+            }
+            catch (RuntimeException failedEvaluation) {
+                BigDecimal leftBigDec = requireType(BigDecimal.class, leftExpression);
+                BigDecimal rightBigDec = requireType(BigDecimal.class, rightExpression);
+
+                // If the denominator is zero, the evaluation fails
+                if (rightBigDec.compareTo(BigDecimal.ZERO) == 0) {
+                    throw new RuntimeException("Division by zero.");
+                }
+                // Use RoundingMode.HALF_EVEN to round midpoints to the nearest even value (1.5, 2.5 --> 2.0)
+                return Environment.create(leftBigDec.divide(rightBigDec, RoundingMode.HALF_EVEN));
+            }
+        }
+        else {
+            throw new RuntimeException("Invalid Operator.");
+        }
     }
 
     @Override
     public Environment.PlcObject visit(Ast.Expression.Access ast) {
-
         // If the expression has a receiver, evaluate it and return the value of the appropriate field
         if (ast.getReceiver().isPresent()) {
             Environment.PlcObject accessReceiver = visit(ast.getReceiver().get());
