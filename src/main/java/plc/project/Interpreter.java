@@ -412,8 +412,8 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
         }
         // If the expression has a receiver, evaluate it and return the result of calling the appropriate method
         if (ast.getReceiver().isPresent()) {
-            Environment.PlcObject functionReceiver = visit(ast.getReceiver().get());
-            return requireType(Environment.PlcObject.class, functionReceiver).callMethod(ast.getName(), functionArguments);
+            Environment.PlcObject functionObj = visit(ast.getReceiver().get());
+            return functionObj.callMethod(ast.getName(), functionArguments);
         }
         else {
             // Otherwise, return value of invoking the appropriate function in the current scope with evaluated arguments.
