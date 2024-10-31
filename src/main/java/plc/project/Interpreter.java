@@ -395,8 +395,7 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
     public Environment.PlcObject visit(Ast.Expression.Access ast) {
         // If the expression has a receiver, evaluate it and return the value of the appropriate field
         if (ast.getReceiver().isPresent()) {
-            Environment.PlcObject accessReceiver = visit(ast.getReceiver().get());
-            return requireType(Environment.PlcObject.class, accessReceiver).getField(ast.getName()).getValue();
+            return visit(ast.getReceiver().get()).getField(ast.getName()).getValue();
         }
         // Otherwise, return the value of the appropriate variable in the current scope
         else {
