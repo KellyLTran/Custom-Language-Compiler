@@ -316,7 +316,6 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
                 String rightString = requireType(String.class, rightExpression);
                 return Environment.create(leftString + rightString);
             }
-
             // If the string concatenation failed, try treating LHS as a BigInteger
             catch (RuntimeException failedEvaluation) {
                 try {
@@ -325,7 +324,6 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
                     BigInteger rightBigInt = requireType(BigInteger.class, rightExpression);
                     return Environment.create(leftBigInt.add(rightBigInt));
                 }
-
                 // Otherwise, it must be a BigDecimal
                 catch (RuntimeException failedEvaluation2) {
                     BigDecimal leftBigDec = requireType(BigDecimal.class, leftExpression);
@@ -338,58 +336,55 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
         // Handle subtraction for BigInteger/BigDecimal and ensure they are the same type
         else if (ast.getOperator().equals("-")) {
             Environment.PlcObject rightExpression = visit(ast.getRight());
-            if (requireType(BigInteger.class, leftExpression) != null) {
+            try {
                 BigInteger leftBigInt = requireType(BigInteger.class, leftExpression);
                 BigInteger rightBigInt = requireType(BigInteger.class, rightExpression);
                 return Environment.create(leftBigInt.subtract(rightBigInt));
             }
-            if (requireType(BigDecimal.class, leftExpression) != null) {
+            catch (RuntimeException failedEvaluation) {
                 BigDecimal leftBigDec = requireType(BigDecimal.class, leftExpression);
                 BigDecimal rightBigDec = requireType(BigDecimal.class, rightExpression);
                 return Environment.create(leftBigDec.subtract(rightBigDec));
             }
-            throw new RuntimeException("Operands must be of the same type.");
         }
 
         // Handle multiplication for BigInteger/BigDecimal and ensure they are the same type
         else if (ast.getOperator().equals("*")) {
             Environment.PlcObject rightExpression = visit(ast.getRight());
-            if (requireType(BigInteger.class, leftExpression) != null) {
+            try {
                 BigInteger leftBigInt = requireType(BigInteger.class, leftExpression);
                 BigInteger rightBigInt = requireType(BigInteger.class, rightExpression);
                 return Environment.create(leftBigInt.multiply(rightBigInt));
             }
-            if (requireType(BigDecimal.class, leftExpression) != null) {
+            catch (RuntimeException failedEvaluation) {
                 BigDecimal leftBigDec = requireType(BigDecimal.class, leftExpression);
                 BigDecimal rightBigDec = requireType(BigDecimal.class, rightExpression);
                 return Environment.create(leftBigDec.multiply(rightBigDec));
             }
-            throw new RuntimeException("Operands must be of the same type.");
         }
 
         // Handle division for BigInteger/BigDecimal and ensure they are the same type
         else if (ast.getOperator().equals("/")) {
             Environment.PlcObject rightExpression = visit(ast.getRight());
-            if (requireType(BigInteger.class, leftExpression) != null) {
+            try {
                 BigInteger leftBigInt = requireType(BigInteger.class, leftExpression);
                 BigInteger rightBigInt = requireType(BigInteger.class, rightExpression);
-
-                // If the denominator is zero, the evaluation fails
                 if (rightBigInt.equals(BigInteger.ZERO)) {
                     throw new RuntimeException("Division by zero.");
                 }
                 return Environment.create(leftBigInt.divide(rightBigInt));
             }
-            if (requireType(BigDecimal.class, leftExpression) != null) {
+            catch (RuntimeException failedEvaluation) {
                 BigDecimal leftBigDec = requireType(BigDecimal.class, leftExpression);
                 BigDecimal rightBigDec = requireType(BigDecimal.class, rightExpression);
+
+                // If the denominator is zero, the evaluation fails
                 if (rightBigDec.compareTo(BigDecimal.ZERO) == 0) {
                     throw new RuntimeException("Division by zero.");
                 }
                 // Use RoundingMode.HALF_EVEN to round midpoints to the nearest even value (1.5, 2.5 --> 2.0)
                 return Environment.create(leftBigDec.divide(rightBigDec, RoundingMode.HALF_EVEN));
             }
-            throw new RuntimeException("Operands must be of the same type.");
         }
         else {
             throw new RuntimeException("Invalid Operator.");
