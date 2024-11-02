@@ -65,10 +65,12 @@ public class Interpreter implements Ast.Visitor<Environment.PlcObject> {
 
     @Override
     public Environment.PlcObject visit(Ast.Method ast) {
+        // Capture the scope where the function was defined in a variable
+        Scope previousScope = scope;
+
         // Define the function in the current scope as a lambda function
         scope.defineFunction(ast.getName(), ast.getParameters().size(), args -> {
             // Capture scope in a variable and set it to be a new child of the scope where the function was defined
-            Scope previousScope = scope;
             scope = new Scope(previousScope);
             try {
                 // Define variables for the incoming arguments, using the parameter names (Assume correct args provided)
