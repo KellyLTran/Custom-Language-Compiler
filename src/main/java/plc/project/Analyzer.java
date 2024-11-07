@@ -130,7 +130,52 @@ public final class Analyzer implements Ast.Visitor<Void> {
 
     @Override
     public Void visit(Ast.Expression.Binary ast) {
-        throw new UnsupportedOperationException();  // TODO
+        visit(ast.getLeft());
+        visit(ast.getRight());
+        String operator = ast.getOperator();
+
+        // If it is a logical operator, ensure both operands are Boolean and set the result type to Boolean
+        if (operator.equals("&&") || operator.equals("||")) {
+            requireAssignable(Environment.Type.BOOLEAN, ast.getLeft().getType());
+            requireAssignable(Environment.Type.BOOLEAN, ast.getRight().getType());
+            ast.setType(Environment.Type.BOOLEAN);
+        }
+
+        // If it is a comparison operator, ensure both sides are Comparable and of the same type
+        else if (operator.equals("<") || operator.equals("<=") || operator.equals(">")
+                || operator.equals(">=") || operator.equals("==") || operator.equals("!=")) {
+            requireAssignable(Environment.Type.COMPARABLE, ast.getLeft().getType());
+            requireAssignable(Environment.Type.COMPARABLE, ast.getRight().getType());
+            ast.setType(Environment.Type.BOOLEAN);
+        }
+
+        else if (operator.equals("+")) {
+            // If either side is a String, the result is a String, and the other side can be anything
+            if (ast.getLeft().getType().equals(Environment.Type.STRING) || ast.getRight().getType().equals(Environment.Type.STRING)) {
+                ast.setType(Environment.Type.STRING);
+            }
+            else {
+                // Otherwise, the LHS must be an Integer or Decimal and both the RHS
+                if (!ast.getLeft().getType().equals(Environment.Type.INTEGER) && !ast.getLeft().getType().equals(Environment.Type.DECIMAL)) {
+                    throw new RuntimeException("Left operand is not an Integer or Decimal.");
+                }
+                else {
+                    requireAssignable(ast.getLeft().getType(), ast.getRight().getType());
+                    // Set the result type to the same as the LHS
+                    ast.setType(ast.getLeft().getType());
+                }
+            }
+        }
+
+        else if (operator.equals("-") || operator.equals("*") || operator.equals("/")) {
+            if (!ast.getLeft().getType().equals(Environment.Type.INTEGER) && !ast.getLeft().getType().equals(Environment.Type.DECIMAL)) {
+                throw new RuntimeException("Left operand is not an Integer or Decimal.");
+            }
+            requireAssignable(ast.getLeft().getType(), ast.getRight().getType());
+            // Set both the RHS and result type to the same as the LHS
+            ast.setType(ast.getLeft().getType());
+        }
+        return null;
     }
 
     @Override
@@ -142,7 +187,6 @@ public final class Analyzer implements Ast.Visitor<Void> {
     public Void visit(Ast.Expression.Function ast) {
         throw new UnsupportedOperationException();  // TODO
     }
-
 
     // Return void if the assignable type requirements are met; otherwise, generate the exception
     public static void requireAssignable(Environment.Type target, Environment.Type type) {
