@@ -73,9 +73,48 @@ public final class Analyzer implements Ast.Visitor<Void> {
         throw new UnsupportedOperationException();  // TODO
     }
 
+
+    // Validate and set type of the literal
     @Override
     public Void visit(Ast.Expression.Literal ast) {
-        throw new UnsupportedOperationException();  // TODO
+        Object literalExpression = ast.getLiteral();
+        // NIL, Boolean, Character, String: No additional behavior
+        if (literalExpression == null) {
+            ast.setType(Environment.Type.NIL);
+        }
+        // Use instanceof to identify the literal value to distinguish between the type in our language and the type of the Java object
+        if (literalExpression instanceof Boolean) {
+            ast.setType(Environment.Type.BOOLEAN);
+        }
+        if (literalExpression instanceof String) {
+            ast.setType(Environment.Type.STRING);
+        }
+        if (literalExpression instanceof Character)
+            ast.setType(Environment.Type.CHARACTER);
+
+        // Integer: Throw a RuntimeException if the value is out of range of a Java int (32-bit signed int)
+        if (literalExpression instanceof BigInteger) {
+            BigInteger bigIntValue = (BigInteger) literalExpression;
+
+            // Check if within the range of a Java 32-bit signed int
+            if (bigIntValue.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) > 0 ||
+                    bigIntValue.compareTo(BigInteger.valueOf(Integer.MIN_VALUE)) < 0) {
+                throw new RuntimeException("Integer out of range.");
+            }
+            ast.setType(Environment.Type.INTEGER);
+        }
+        // Decimal: Throws a RuntimeException if the value is out of range of a Java double value (64-bit signed float)
+        if (literalExpression instanceof BigDecimal) {
+            BigDecimal bigDecValue = (BigDecimal) literalExpression;
+            double doubleValue = bigDecValue.doubleValue();
+
+            // If the value does not fit into a double, it will be converted to infinity
+            if (Double.isInfinite(doubleValue)) {
+                throw new RuntimeException("Decimal out of range.");
+            }
+            ast.setType(Environment.Type.DECIMAL);
+        }
+        return null;
     }
 
     @Override
