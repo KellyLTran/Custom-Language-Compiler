@@ -73,7 +73,6 @@ public final class Analyzer implements Ast.Visitor<Void> {
         throw new UnsupportedOperationException();  // TODO
     }
 
-
     // Validate and set type of the literal
     @Override
     public Void visit(Ast.Expression.Literal ast) {
@@ -92,23 +91,21 @@ public final class Analyzer implements Ast.Visitor<Void> {
         if (literalExpression instanceof Character)
             ast.setType(Environment.Type.CHARACTER);
 
-        // Integer: Throw a RuntimeException if the value is out of range of a Java int (32-bit signed int)
+        // Integer: If the value is out of range of a Java int (32-bit signed int), throw a RuntimeException
         if (literalExpression instanceof BigInteger) {
             BigInteger bigIntValue = (BigInteger) literalExpression;
-
-            // Check if within the range of a Java 32-bit signed int
             if (bigIntValue.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) > 0 ||
                     bigIntValue.compareTo(BigInteger.valueOf(Integer.MIN_VALUE)) < 0) {
                 throw new RuntimeException("Integer out of range.");
             }
             ast.setType(Environment.Type.INTEGER);
         }
-        // Decimal: Throws a RuntimeException if the value is out of range of a Java double value (64-bit signed float)
+        // Decimal: If the value is out of range of a Java double value (64-bit signed float), throw a RuntimeException
         if (literalExpression instanceof BigDecimal) {
             BigDecimal bigDecValue = (BigDecimal) literalExpression;
             double doubleValue = bigDecValue.doubleValue();
 
-            // If the value does not fit into a double, it will be converted to infinity, so check for that
+            // If the value is infinity, then it does not fit into a double so throw a RuntimeException
             if (Double.isInfinite(doubleValue)) {
                 throw new RuntimeException("Decimal out of range.");
             }
@@ -117,9 +114,18 @@ public final class Analyzer implements Ast.Visitor<Void> {
         return null;
     }
 
+    // Validate a group expression
     @Override
     public Void visit(Ast.Expression.Group ast) {
-        throw new UnsupportedOperationException();  // TODO
+        visit(ast.getExpression());
+
+        // If the expression is not a binary expression (the only type affected by precedence), throw a RunTimeException
+        if (!(ast.getExpression() instanceof Ast.Expression.Binary)) {
+            throw new RuntimeException("The contained expression is not a binary expression.");
+        }
+        // Set the type of the group expression to be the type of the contained expression
+        ast.setType(ast.getExpression().getType());
+        return null;
     }
 
     @Override
@@ -138,14 +144,13 @@ public final class Analyzer implements Ast.Visitor<Void> {
     }
 
 
-    // Return void because either the exception is generated or the requirement is met
+    // Return void if the assignable type requirements are met; otherwise, generate the exception
     public static void requireAssignable(Environment.Type target, Environment.Type type) {
 
         // If the target type is Any, anything from our language can be assigned to it (similar to Object class in Java)
         if (target.equals(Environment.Type.ANY)) {
             return;
         }
-
         // If the target type is Comparable, it can be assigned any of our defined Comparable types:
         // Integer, Decimal, Character, and String (Do not need to support any other Comparable types)
         if (target.equals(Environment.Type.COMPARABLE) &&
@@ -155,8 +160,7 @@ public final class Analyzer implements Ast.Visitor<Void> {
                         type.equals(Environment.Type.STRING))) {
             return;
         }
-
-        // Throw a RuntimeException when the target type does not match the type being used or assigned
+        // If the target type does not match the type being used or assigned, throw a RuntimeException
         if (!target.equals(type)) {
             throw new RuntimeException("Type does not match.");
         }
