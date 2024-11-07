@@ -108,7 +108,7 @@ public final class Analyzer implements Ast.Visitor<Void> {
             BigDecimal bigDecValue = (BigDecimal) literalExpression;
             double doubleValue = bigDecValue.doubleValue();
 
-            // If the value does not fit into a double, it will be converted to infinity
+            // If the value does not fit into a double, it will be converted to infinity, so check for that
             if (Double.isInfinite(doubleValue)) {
                 throw new RuntimeException("Decimal out of range.");
             }
@@ -137,8 +137,28 @@ public final class Analyzer implements Ast.Visitor<Void> {
         throw new UnsupportedOperationException();  // TODO
     }
 
-    public static void requireAssignable(Environment.Type target, Environment.Type type) {
-        throw new UnsupportedOperationException();  // TODO
-    }
 
+    // Return void because either the exception is generated or the requirement is met
+    public static void requireAssignable(Environment.Type target, Environment.Type type) {
+
+        // If the target type is Any, anything from our language can be assigned to it (similar to Object class in Java)
+        if (target.equals(Environment.Type.ANY)) {
+            return;
+        }
+
+        // If the target type is Comparable, it can be assigned any of our defined Comparable types:
+        // Integer, Decimal, Character, and String (Do not need to support any other Comparable types)
+        if (target.equals(Environment.Type.COMPARABLE) &&
+                (type.equals(Environment.Type.INTEGER) ||
+                        type.equals(Environment.Type.DECIMAL) ||
+                        type.equals(Environment.Type.CHARACTER) ||
+                        type.equals(Environment.Type.STRING))) {
+            return;
+        }
+
+        // Throw a RuntimeException when the target type does not match the type being used or assigned
+        if (!target.equals(type)) {
+            throw new RuntimeException("Type does not match.");
+        }
+    }
 }
