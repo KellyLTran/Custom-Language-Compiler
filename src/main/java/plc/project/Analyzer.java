@@ -90,15 +90,19 @@ public final class Analyzer implements Ast.Visitor<Void> {
         throw new UnsupportedOperationException();  // TODO
     }
 
-    // Validates an assignment statement. Throws a RuntimeException if:
-    //•	The receiver is not an access expression (since any other type is not assignable).
-    //•	The value is not assignable to the receiver (see Ast.Field for additional details).
-    //•	After declaration, making an assignment to a constant field.
-    //In the Interpreter, we had to do additional work to unwrap names in the AST. Here, we do not need to do that since visiting the AST is performing type analysis, not evaluation, and thus the behaviors are different.
-    //Returns null.
+    // Validate an assignment statement
     @Override
     public Void visit(Ast.Statement.Assignment ast) {
-        throw new UnsupportedOperationException();  // TODO
+        // If the receiver is not an access expression (since any other type is not assignable), throw a Runtime Exception
+        if (!(ast.getReceiver() instanceof Ast.Expression.Access)) {
+            throw new RuntimeException("The contained expression is not an access expression.");
+        }
+        visit(ast.getReceiver());
+        visit(ast.getValue());
+
+        // Ensure that the value is assignable to the receiver
+        requireAssignable(ast.getReceiver().getType(), ast.getValue().getType());
+        return null;
     }
 
     // Validates an if statement. Throws a RuntimeException if:
