@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 /**
@@ -23,51 +24,121 @@ public final class Analyzer implements Ast.Visitor<Void> {
         return scope;
     }
 
+    // Visits fields followed by methods (following the left-depth-first traversal of the AST). Throws a RuntimeException if:
+    //
+    //A main/0 function (name = main, arity = 0) does not exist.
+    //The main/0 function does not have an Integer return type.
+    //Returns null.
     @Override
     public Void visit(Ast.Source ast) {
         throw new UnsupportedOperationException();  // TODO
     }
 
+    // Defines a variable in the current scope according to the following, also setting it in the Ast (Ast.Field#setVariable).
+    //
+    //The variable's name and jvmName are both the name of the field.
+    //The variable's type is the type registered in the Environment with the same name as the one in the AST.
+    //The variable's value is Environment.NIL (since it is not used by the analyzer).
+    //The value of the field, if present, must be visited before the variable is defined (otherwise, the field would be used before it was initialized).
+    //
+    //Additionally, throws a RuntimeException if:
+    //
+    //The value, if present, is not assignable to the field.
+    //For a value to be assignable, its type must be a subtype of the field's type as defined above (section Assignable Types).
+    //A constant field must have an initial value assigned to it when the field is declared (here, within Ast.Field).
     @Override
     public Void visit(Ast.Field ast) {
         throw new UnsupportedOperationException();  // TODO
     }
 
+    // Defines a function in the current scope according to the following, also setting it in the Ast (Ast.Method#setFunction).
+    //
+    //The function's name and jvmName are both the name of the method.
+    //The function's parameter types and return type are retrieved from the environment using the corresponding names in the method.
+    //Examine the grammar and identify that providing a return type in the function declaration is optional. Therefore, if the return type is not provided and thus, not present in the AST, the return type will be Environment.NIL.
+    //The method's function (such naming much wow) is args -> Environment.NIL, which always returns nil (since it is not used by the analyzer).
+    //Next, visit all of the method's statements inside of a new scope containing variables for each parameter. Unlike fields, this is done after the method is defined to allow for recursive methods.
+    //
+    //Additionally, you will need to coordinate with Ast.Statement.Return so the expected return type is known (hint: save in a variable).
+    //
+    //Note: You do NOT need to check for missing returns or 'dead' code (statements after a return), both of which are errors in Java.  Such checks are of course useful and possible, however they also extend the complexity required by the implementation.
     @Override
     public Void visit(Ast.Method ast) {
         throw new UnsupportedOperationException();  // TODO
     }
 
+    // Validates the expression statement. Throws a RuntimeException if:
+    //
+    //The expression is not an Ast.Expression.Function (since this is the only type of expression that can cause a side effect).
     @Override
     public Void visit(Ast.Statement.Expression ast) {
         throw new UnsupportedOperationException();  // TODO
     }
 
+    // Defines a variable in the current scope according to the following:
+    //
+    //The variable's name and jvmName are both the name in the AST.
+    //The variable's type is the type registered in the Environment with the same name as the one in the AST, if present, or else the type of the value. If neither are present this is an error.
+    //The variable's value is Environment.NIL (since it is not used by the analyzer).
+    //The value of the declared variable, if present, must be visited before the variable is defined (otherwise, the variable would be used before it was initialized and also because its type may be needed to determine the type of the variable).
+    //
+    //Additionally, throws a RuntimeException if:
+    //
+    //The value, if present, is not assignable to the variable (see Ast.Field for additional details).
     @Override
     public Void visit(Ast.Statement.Declaration ast) {
         throw new UnsupportedOperationException();  // TODO
     }
 
+    // Validates an assignment statement. Throws a RuntimeException if:
+    //•	The receiver is not an access expression (since any other type is not assignable).
+    //•	The value is not assignable to the receiver (see Ast.Field for additional details).
+    //•	After declaration, making an assignment to a constant field.
+    //In the Interpreter, we had to do additional work to unwrap names in the AST. Here, we do not need to do that since visiting the AST is performing type analysis, not evaluation, and thus the behaviors are different.
+    //Returns null.
     @Override
     public Void visit(Ast.Statement.Assignment ast) {
         throw new UnsupportedOperationException();  // TODO
     }
 
+    // Validates an if statement. Throws a RuntimeException if:
+    //
+    //The condition is not of type Boolean.
+    //The thenStatements list is empty.
+    //After handling the condition, visit the then and else statements inside of a new scope for each one.
     @Override
     public Void visit(Ast.Statement.If ast) {
         throw new UnsupportedOperationException();  // TODO
     }
 
+    // Validates a for statement. Throws a RuntimeException if:
+    //
+    //The identifier, when present, is not a Comparable type.
+    //The condition is not of type Boolean.
+    //The expression in the increment is not the same type as the identifier given at the start of the for signature.
+    //The list of statement is empty.
+    //After visiting the condition, visit each case (including the default) statement inside of a new scope for each case.
     @Override
     public Void visit(Ast.Statement.For ast) {
         throw new UnsupportedOperationException();  // TODO
     }
 
+    // Validates a while statement. Throws a RuntimeException if:
+    //
+    // The value is not of type Boolean.
+    //Then, visits all of the while loop's statements in a new scope.
+    //
+    //Returns null.
     @Override
     public Void visit(Ast.Statement.While ast) {
         throw new UnsupportedOperationException();  // TODO
     }
 
+    // Validates a return statement. Throws a RuntimeException if:
+    // The value is not assignable to the return type of the function within which the statement is contained.
+    // As hinted in Ast.Method, you will need to coordinate between these visits to accomplish this.
+    //Note: This visit will only be called as part of visiting a method, since otherwise there would not be a return type to consider.
+    //Returns null.
     @Override
     public Void visit(Ast.Statement.Return ast) {
         throw new UnsupportedOperationException();  // TODO
@@ -140,7 +211,6 @@ public final class Analyzer implements Ast.Visitor<Void> {
             requireAssignable(Environment.Type.BOOLEAN, ast.getRight().getType());
             ast.setType(Environment.Type.BOOLEAN);
         }
-
         // If it is a comparison operator, ensure both sides are Comparable and of the same type
         else if (operator.equals("<") || operator.equals("<=") || operator.equals(">")
                 || operator.equals(">=") || operator.equals("==") || operator.equals("!=")) {
@@ -148,7 +218,6 @@ public final class Analyzer implements Ast.Visitor<Void> {
             requireAssignable(Environment.Type.COMPARABLE, ast.getRight().getType());
             ast.setType(Environment.Type.BOOLEAN);
         }
-
         else if (operator.equals("+")) {
             // If either side is a String, the result is a String, and the other side can be anything
             if (ast.getLeft().getType().equals(Environment.Type.STRING) || ast.getRight().getType().equals(Environment.Type.STRING)) {
@@ -166,7 +235,6 @@ public final class Analyzer implements Ast.Visitor<Void> {
                 }
             }
         }
-
         else if (operator.equals("-") || operator.equals("*") || operator.equals("/")) {
             if (!ast.getLeft().getType().equals(Environment.Type.INTEGER) && !ast.getLeft().getType().equals(Environment.Type.DECIMAL)) {
                 throw new RuntimeException("Left operand is not an Integer or Decimal.");
@@ -178,14 +246,66 @@ public final class Analyzer implements Ast.Visitor<Void> {
         return null;
     }
 
+    // Validate an access expression and set the variable of the expression
     @Override
     public Void visit(Ast.Expression.Access ast) {
-        throw new UnsupportedOperationException();  // TODO
+        // If the receiver is present, then the variable is a field of the receiver
+        if (ast.getReceiver().isPresent()) {
+            visit(ast.getReceiver().get());
+
+            // Set the type of the expression to be the type of the variable
+            Environment.Type receiverType = ast.getReceiver().get().getType();
+            Environment.Variable variableField = receiverType.getField(ast.getName());
+            ast.setVariable(variableField);
+        }
+        // Otherwise, the variable is in the current scope
+        else {
+            Environment.Variable variableScope = scope.lookupVariable(ast.getName());
+            ast.setVariable(variableScope);
+        }
+        return null;
     }
 
+    // Validate a function expression and set the function of the expression
     @Override
     public Void visit(Ast.Expression.Function ast) {
-        throw new UnsupportedOperationException();  // TODO
+        List<Environment.Type> functionTypes = new ArrayList<>();
+
+        // Visit each argument and get their type
+        for (int i = 0; i < ast.getArguments().size(); i++) {
+            Ast.Expression functionArgument = ast.getArguments().get(i);
+            visit(functionArgument);
+            functionTypes.add(functionArgument.getType());
+        }
+        // If the receiver is present, then the function is a method of the receiver
+        if (ast.getReceiver().isPresent()) {
+            visit(ast.getReceiver().get());
+
+            // Set the type of the expression to be the return type of the function
+            Environment.Type receiverType = ast.getReceiver().get().getType();
+            Environment.Function functionMethod = receiverType.getFunction(ast.getName(), ast.getArguments().size());
+            ast.setFunction(functionMethod);
+
+            // Ensure that the provided arguments are assignable to the corresponding parameter types of the function
+            List<Environment.Type> functionParameters = functionMethod.getParameterTypes();
+            requireAssignable(functionParameters.get(0), receiverType);
+            for (int i = 0; i < ast.getArguments().size(); i++) {
+
+                // Since the first parameter of a method (retrieved from the receiver) is the object the method is being called on
+                // (like self in Python), the first argument is at index 1 in the parameters, not 0, only for methods
+                requireAssignable(functionParameters.get(i + 1), functionTypes.get(i));
+            }
+        }
+        // Otherwise, the function is in the current scope
+        else {
+            Environment.Function functionScope = scope.lookupFunction(ast.getName(), functionTypes.size());
+            ast.setFunction(functionScope);
+            List<Environment.Type> functionParameters = functionScope.getParameterTypes();
+            for (int i = 0; i < ast.getArguments().size(); i++) {
+                requireAssignable(functionParameters.get(i), functionTypes.get(i));
+            }
+        }
+        return null;
     }
 
     // Return void if the assignable type requirements are met; otherwise, generate the exception
