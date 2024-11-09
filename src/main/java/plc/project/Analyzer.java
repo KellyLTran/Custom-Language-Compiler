@@ -134,14 +134,15 @@ public final class Analyzer implements Ast.Visitor<Void> {
         throw new UnsupportedOperationException();  // TODO
     }
 
-    // Validates a return statement. Throws a RuntimeException if:
-    // The value is not assignable to the return type of the function within which the statement is contained.
-    // As hinted in Ast.Method, you will need to coordinate between these visits to accomplish this.
-    //Note: This visit will only be called as part of visiting a method, since otherwise there would not be a return type to consider.
-    //Returns null.
+    // Validate a return statement
     @Override
     public Void visit(Ast.Statement.Return ast) {
-        throw new UnsupportedOperationException();  // TODO
+        visit(ast.getValue());
+        Environment.Variable returnType = scope.lookupVariable("returnType");
+
+        // Ensure that the value is assignable to the return type of the function that the statement is in
+        requireAssignable(returnType.getType(), ast.getValue().getType());
+        return null;
     }
 
     // Validate and set type of the literal
