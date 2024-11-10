@@ -137,7 +137,18 @@ public final class Analyzer implements Ast.Visitor<Void> {
     //Returns null.
     @Override
     public Void visit(Ast.Statement.While ast) {
-        throw new UnsupportedOperationException();  // TODO
+
+        // Ensure that the value is of type Boolean
+        visit(ast.getCondition());
+        requireAssignable(Environment.Type.BOOLEAN, ast.getCondition().getType());
+
+        // Visit all of while loop's statements in a new scope
+        scope = new Scope(scope);
+        List<Ast.Statement> whileStatements = ast.getStatements();
+        for (int i = 0; i < whileStatements.size(); i++) {
+            visit(whileStatements.get(i));
+        }
+        return null;
     }
 
     // Validate a return statement
