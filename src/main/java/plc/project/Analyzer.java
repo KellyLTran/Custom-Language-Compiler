@@ -79,17 +79,34 @@ public final class Analyzer implements Ast.Visitor<Void> {
         return null;
     }
 
-    // Defines a variable in the current scope according to the following:
-    //•	The variable's name and jvmName are both the name in the AST.
-    //•	The variable's type is the type registered in the Environment with the same name as the one in the AST, if present, or else the type of the value. If neither are present this is an error.
-    //•	The variable's value is Environment.NIL (since it is not used by the analyzer).
-    //The value of the declared variable, if present, must be visited before the variable is defined (otherwise, the variable would be used before it was initialized and also because its type may be needed to determine the type of the variable).
-    //Additionally, throws a RuntimeException if:
-    //•	The value, if present, is not assignable to the variable (see Ast.Field for additional details).
-    //Returns null.
+    // Define a variable in the current scope based on certain conditions
     @Override
     public Void visit(Ast.Statement.Declaration ast) {
-        throw new UnsupportedOperationException();  // TODO
+
+        // If the value of the declared variable is present, it must be visited before the variable is defined
+        if (ast.getValue().isPresent()) {
+            visit(ast.getValue().get());
+
+            // Ensure that the value is assignable to the variable
+            requireAssignable(ast.getValue().get().getType(), ast.getValue().get().getType());
+        }
+        // If the type of the declared variable is present, it must be the type registered in the Environment with the same name as the one in the AST
+        if (ast.getTypeName().isPresent()) {
+
+            // The variable's value is Environment.NIL since it is not used by the analyzer
+            Environment.Variable declaredVariable = scope.defineVariable(ast.getName(), ast.getName(), Environment.getType(ast.getTypeName().get()), false, Environment.NIL);
+            ast.setVariable(declaredVariable);
+        }
+        // Otherwise, the variable's type is the type of the value
+        else {
+            Environment.Variable declaredVariable = scope.defineVariable(ast.getName(), ast.getName(), ast.getValue().get().getType(), false, Environment.NIL);
+            ast.setVariable(declaredVariable);
+        }
+        // If neither are present, throw a Runtime Exception
+        if (!ast.getTypeName().isPresent() && !ast.getValue().isPresent()) {
+            throw new RuntimeException("The declared variable does not have a type or value.");
+        }
+        return null;
     }
 
     // Validate an assignment statement
