@@ -67,24 +67,26 @@ public final class Analyzer implements Ast.Visitor<Void> {
         throw new UnsupportedOperationException();  // TODO
     }
 
-    // Validates the expression statement. Throws a RuntimeException if:
-    //
-    //The expression is not an Ast.Expression.Function (since this is the only type of expression that can cause a side effect).
+    // Validate the expression statement
     @Override
     public Void visit(Ast.Statement.Expression ast) {
-        throw new UnsupportedOperationException();  // TODO
+
+        // If the expression is not an Ast.Expression.Function (only type of expression that can cause a side effect), throw a Runtime Exception
+        if (!(ast.getExpression() instanceof Ast.Expression.Function)) {
+            throw new RuntimeException("The contained expression is not a function expression.");
+        }
+        visit(ast.getExpression());
+        return null;
     }
 
     // Defines a variable in the current scope according to the following:
-    //
-    //The variable's name and jvmName are both the name in the AST.
-    //The variable's type is the type registered in the Environment with the same name as the one in the AST, if present, or else the type of the value. If neither are present this is an error.
-    //The variable's value is Environment.NIL (since it is not used by the analyzer).
+    //•	The variable's name and jvmName are both the name in the AST.
+    //•	The variable's type is the type registered in the Environment with the same name as the one in the AST, if present, or else the type of the value. If neither are present this is an error.
+    //•	The variable's value is Environment.NIL (since it is not used by the analyzer).
     //The value of the declared variable, if present, must be visited before the variable is defined (otherwise, the variable would be used before it was initialized and also because its type may be needed to determine the type of the variable).
-    //
     //Additionally, throws a RuntimeException if:
-    //
-    //The value, if present, is not assignable to the variable (see Ast.Field for additional details).
+    //•	The value, if present, is not assignable to the variable (see Ast.Field for additional details).
+    //Returns null.
     @Override
     public Void visit(Ast.Statement.Declaration ast) {
         throw new UnsupportedOperationException();  // TODO
