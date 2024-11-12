@@ -101,6 +101,9 @@ public final class Analyzer implements Ast.Visitor<Void> {
         else {
             Environment.Variable declaredVariable = scope.defineVariable(ast.getName(), ast.getName(), ast.getValue().get().getType(), false, Environment.NIL);
             ast.setVariable(declaredVariable);
+
+            // If there was a missing type, return null, not an exception
+            return null;
         }
         // If neither are present, throw a Runtime Exception
         if (!ast.getTypeName().isPresent() && !ast.getValue().isPresent()) {
@@ -124,7 +127,7 @@ public final class Analyzer implements Ast.Visitor<Void> {
         return null;
     }
 
-    // Validates an if statement. Throws a RuntimeException if:
+    // Validates an if statement
     //
     //The condition is not of type Boolean.
     //The thenStatements list is empty.
@@ -146,24 +149,21 @@ public final class Analyzer implements Ast.Visitor<Void> {
         throw new UnsupportedOperationException();  // TODO
     }
 
-    // Validates a while statement. Throws a RuntimeException if:
-    //
-    // The value is not of type Boolean.
-    //Then, visits all of the while loop's statements in a new scope.
-    //
-    //Returns null.
+    // Validate a while statement by visiting all of the while loop's statements in a new scope
     @Override
     public Void visit(Ast.Statement.While ast) {
-
-        // Ensure that the value is of type Boolean
         visit(ast.getCondition());
         requireAssignable(Environment.Type.BOOLEAN, ast.getCondition().getType());
-
-        // Visit all of while loop's statements in a new scope
-        scope = new Scope(scope);
-        List<Ast.Statement> whileStatements = ast.getStatements();
-        for (int i = 0; i < whileStatements.size(); i++) {
-            visit(whileStatements.get(i));
+        Scope previousScope = scope;
+        scope = new Scope(previousScope);
+        try {
+            List<Ast.Statement> whileStatements = ast.getStatements();
+            for (int i = 0; i < whileStatements.size(); i++) {
+                visit(whileStatements.get(i));
+            }
+        }
+        finally {
+            scope = previousScope;
         }
         return null;
     }
