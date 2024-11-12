@@ -127,14 +127,35 @@ public final class Analyzer implements Ast.Visitor<Void> {
         return null;
     }
 
-    // Validates an if statement
-    //
-    //The condition is not of type Boolean.
-    //The thenStatements list is empty.
-    //After handling the condition, visit the then and else statements inside of a new scope for each one.
+    // Validate an if statement
     @Override
     public Void visit(Ast.Statement.If ast) {
-        throw new UnsupportedOperationException();  // TODO
+        // Ensure that the condition is of type Boolean
+        visit(ast.getCondition());
+        requireAssignable(Environment.Type.BOOLEAN, ast.getCondition().getType());
+
+        // If the thenStatements list is empty, throw a RuntimeException
+        if (ast.getThenStatements().isEmpty()) {
+            throw new RuntimeException("Then statements list is empty.");
+        }
+        // Visit the then and else statements inside of a new scope for each one
+        Scope previousScope = scope;
+        scope = new Scope(previousScope);
+        try {
+            List<Ast.Statement> thenStatements = ast.getThenStatements();
+            List<Ast.Statement> elseStatements = ast.getElseStatements();
+            for (int i = 0; i < thenStatements.size(); i++) {
+                visit(thenStatements.get(i));
+            }
+            for (int i = 0; i < elseStatements.size(); i++) {
+                visit(elseStatements.get(i));
+            }
+        }
+        // Ensure that the scope is properly restored whether it fails or not
+        finally {
+            scope = previousScope;
+        }
+        return null;
     }
 
     // Validates a for statement. Throws a RuntimeException if:
