@@ -51,20 +51,52 @@ public final class Analyzer implements Ast.Visitor<Void> {
         throw new UnsupportedOperationException();  // TODO
     }
 
-    // Defines a function in the current scope according to the following, also setting it in the Ast (Ast.Method#setFunction).
-    //
-    //The function's name and jvmName are both the name of the method.
-    //The function's parameter types and return type are retrieved from the environment using the corresponding names in the method.
-    //Examine the grammar and identify that providing a return type in the function declaration is optional. Therefore, if the return type is not provided and thus, not present in the AST, the return type will be Environment.NIL.
-    //The method's function (such naming much wow) is args -> Environment.NIL, which always returns nil (since it is not used by the analyzer).
-    //Next, visit all of the method's statements inside of a new scope containing variables for each parameter. Unlike fields, this is done after the method is defined to allow for recursive methods.
-    //
-    //Additionally, you will need to coordinate with Ast.Statement.Return so the expected return type is known (hint: save in a variable).
-    //
-    //Note: You do NOT need to check for missing returns or 'dead' code (statements after a return), both of which are errors in Java.  Such checks are of course useful and possible, however they also extend the complexity required by the implementation.
+
+    // Define a function in the current scope based on certain conditions and set it in the Ast (Ast.Method#setFunction)
     @Override
     public Void visit(Ast.Method ast) {
-        throw new UnsupportedOperationException();  // TODO
+        List<Environment.Type> methodParTypes = new ArrayList<>();
+        List<String> methodParTypeNames = ast.getParameterTypeNames();
+
+        // Retrieve the function's parameter and return types from the environment using the corresponding names in the method
+        for (int i = 0; i < methodParTypeNames.size(); i++) {
+            String typeName = methodParTypeNames.get(i);
+            methodParTypeNames.set(i, String.valueOf(Environment.getType(typeName)));
+        }
+        // Coordinate with Ast.Statement.Return and save the expected return type in a variable so it is known
+        Environment.Type returnType;
+        if (ast.getReturnTypeName().isPresent()) {
+            returnType = Environment.getType(ast.getReturnTypeName().get());
+        }
+        // If the return type is not present in the AST, it is Environment.Type.NIL (optional in the function declaration)
+        else {
+            returnType = Environment.Type.NIL;
+        }
+        // The function's name and jvmName are both the name of the method
+        // The method's function is args -> Environment.NIL, always returning nil since it is not used by the analyzer
+        ast.setFunction(scope.defineFunction(ast.getName(), ast.getName(), methodParTypes, returnType, args -> Environment.NIL));
+
+        // Visit all method's statements inside a new scope containing variables for each parameter
+        // Unlike fields, this is done after the method is defined to allow for recursive methods
+        Scope previousScope = scope;
+        scope = new Scope(previousScope);
+        try {
+            List<String> methodParNames = ast.getParameters();
+            for (int i = 0; i < methodParNames.size(); i++) {
+                String methodParName = methodParNames.get(i);
+                Environment.Type methodParType = methodParTypes.get(i);
+                scope.defineVariable(methodParName, methodParName, methodParType, false, Environment.NIL);
+            }
+            List<Ast.Statement> methodStatements = ast.getStatements();
+            for (int i = 0; i < methodStatements.size(); i++) {
+                Ast.Statement methodStatement = methodStatements.get(i);
+                visit(methodStatement);
+            }
+        }
+        finally {
+            scope = previousScope;
+        }
+        return null;
     }
 
     // Validate the expression statement
@@ -79,7 +111,7 @@ public final class Analyzer implements Ast.Visitor<Void> {
         return null;
     }
 
-    // Define a variable in the current scope based on certain conditions
+    // Define and set a variable in the current scope based on certain conditions
     @Override
     public Void visit(Ast.Statement.Declaration ast) {
 
