@@ -24,14 +24,30 @@ public final class Analyzer implements Ast.Visitor<Void> {
         return scope;
     }
 
-    // Visits fields followed by methods (following the left-depth-first traversal of the AST). Throws a RuntimeException if:
-    //
-    //A main/0 function (name = main, arity = 0) does not exist.
-    //The main/0 function does not have an Integer return type.
-    //Returns null.
+
     @Override
     public Void visit(Ast.Source ast) {
-        throw new UnsupportedOperationException();  // TODO
+
+        // Visit fields followed by methods (left-depth-first traversal of the AST)
+        for (int i = 0; i < ast.getFields().size(); i++) {
+            visit(ast.getFields().get(i));
+        }
+        for (int i = 0; i < ast.getMethods().size(); i++) {
+            visit(ast.getMethods().get(i));
+        }
+        Environment.Function mainFunction;
+
+        // Ensure that the main/0 function (name = main, arity = 0) exists and that it has an Integer return type
+        try {
+            mainFunction = scope.lookupFunction("main", 0);
+        }
+        catch (RuntimeException failedEvaluation) {
+            throw new RuntimeException("A main/0 function does not exist.");
+        }
+        if (!mainFunction.getReturnType().equals(Environment.Type.INTEGER)) {
+            throw new RuntimeException("The main/0 function does not have an Integer return type.");
+        }
+        return null;
     }
 
     // Define a function in the current scope based on certain conditions and set it in the Ast (Ast.Field#setVariable)
