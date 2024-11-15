@@ -34,21 +34,23 @@ public final class Analyzer implements Ast.Visitor<Void> {
         throw new UnsupportedOperationException();  // TODO
     }
 
-    // Defines a variable in the current scope according to the following, also setting it in the Ast (Ast.Field#setVariable).
-    //
-    //The variable's name and jvmName are both the name of the field.
-    //The variable's type is the type registered in the Environment with the same name as the one in the AST.
-    //The variable's value is Environment.NIL (since it is not used by the analyzer).
-    //The value of the field, if present, must be visited before the variable is defined (otherwise, the field would be used before it was initialized).
-    //
-    //Additionally, throws a RuntimeException if:
-    //
-    //The value, if present, is not assignable to the field.
-    //For a value to be assignable, its type must be a subtype of the field's type as defined above (section Assignable Types).
-    //A constant field must have an initial value assigned to it when the field is declared (here, within Ast.Field).
+    // Define a function in the current scope based on certain conditions and set it in the Ast (Ast.Field#setVariable)
     @Override
     public Void visit(Ast.Field ast) {
-        throw new UnsupportedOperationException();  // TODO
+        // Ensure the type registered in the Environment has the same name as the one in the AST
+        Environment.Type fieldType = Environment.getType(ast.getTypeName());
+
+        // If the value is present, ensure that the value is assignable to the field (its type must be a subtype of the field's type)
+        if (ast.getValue().isPresent()) {
+
+            // Visit value before the variable is defined to ensure the field is not used before it is initialized
+            visit(ast.getValue().get());
+            requireAssignable(fieldType, ast.getValue().get().getType());
+        }
+        // Define the variable in the current scope where the variable's name and jvmName are both the name of the field,
+        // its type is registered in the Environment with the same name as the one in the AST, its value is Environment.NIL
+        ast.setVariable(scope.defineVariable(ast.getName(), ast.getName(), fieldType, false, Environment.NIL));
+        return null;
     }
 
 
