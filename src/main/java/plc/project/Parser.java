@@ -59,10 +59,12 @@ public final class Parser {
      * next tokens start a field, aka {@code LET}.
      */
     // field ::= 'LET' 'CONST'? identifier ('=' expression)? ';'
+    // field ::= 'LET' 'CONST'? identifier ':' identifier ('=' expression)? ';' (Updated After Analyzer)
     public Ast.Field parseField() throws ParseException {
 
         // Initialize the necessary variables for the Ast.Field method
         String identifierToken = "";
+        String identifierToken2 = "";
         boolean constantFlag = false;
         Optional<Ast.Expression> optionalExpression = Optional.empty();
 
@@ -79,6 +81,20 @@ public final class Parser {
                 identifierToken = tokens.get(0).getLiteral();
                 match(Token.Type.IDENTIFIER);
 
+                if (peek(":")) {
+                    match(":");
+                    if (peek(Token.Type.IDENTIFIER)) {
+                        identifierToken2 = tokens.get(0).getLiteral();
+                        match(Token.Type.IDENTIFIER);
+                    }
+                    else {
+                        throw new ParseException("Expected identifier after ':'.", getExceptionIndex());
+                    }
+                }
+                else {
+                    throw new ParseException("Expected ':'.", getExceptionIndex());
+                }
+
                 // If the optional equal sign is present, match then assign and parse the expression
                 if (peek("=")) {
                     match(Token.Type.OPERATOR);
@@ -87,7 +103,7 @@ public final class Parser {
                 // If the required semicolon ends the statement, return the field with the identifier, constant, and expression
                 if (peek(";")) {
                     match(";");
-                    return new Ast.Field(identifierToken, constantFlag, optionalExpression);
+                    return new Ast.Field(identifierToken, identifierToken2, constantFlag, optionalExpression);
                 }
         // Otherwise, throw a parse exception for any missing required tokens
                 else {
@@ -108,12 +124,15 @@ public final class Parser {
      * next tokens start a method, aka {@code DEF}.
      */
     // method ::= 'DEF' identifier '(' (identifier (',' identifier)*)? ')' 'DO' statement* 'END'
+    // method ::= 'DEF' identifier '(' (identifier ':' identifier (',' identifier ':' identifier)*)? ')' (':' identifier)? 'DO' statement* 'END' (Updated)
     public Ast.Method parseMethod() throws ParseException {
 
         // Initialize the necessary variables for the Ast.Method method
         String identifierToken = "";
         List<String> parametersList = new ArrayList<>();
         List<Ast.Statement> statementsList = new ArrayList<>();
+        List<String> parameterTypes = new ArrayList<>();
+        Optional<String> returnType = Optional.empty();
 
         // Check for the required DEF keyword, the identifier, and the opening parentheses that must follow
         if (peek("DEF")) {
@@ -124,39 +143,76 @@ public final class Parser {
                 if (peek("(")) {
                     match("(");
 
-                    // If an optional identifier exists after the opening parentheses, parse and add it to the parametersList
+                    // Parse parameters and their types if they are present
                     if (peek(Token.Type.IDENTIFIER)) {
                         parametersList.add(tokens.get(0).getLiteral());
                         match(Token.Type.IDENTIFIER);
 
-                        // While commas are present, parse and add each identifier to the parametersList
+                        // Check for parameter types
+                        if (peek(":")) {
+                            match(":");
+                            if (peek(Token.Type.IDENTIFIER)) {
+                                parameterTypes.add(tokens.get(0).getLiteral());
+                                match(Token.Type.IDENTIFIER);
+                            }
+                            else {
+                                throw new ParseException("Expected parameter type after ':'.", getExceptionIndex());
+                            }
+                        }
+                        else {
+                            parameterTypes.add(null);
+                        }
+                        // While commas are present, parse and add each identifier and its type to the parametersList
                         while (peek(",")) {
                             match(",");
                             if (peek(Token.Type.IDENTIFIER)) {
                                 parametersList.add(tokens.get(0).getLiteral());
                                 match(Token.Type.IDENTIFIER);
                             }
-
-                            // Otherwise, throw an exception if a comma is present without any identifiers following
                             else {
-                                throw new ParseException("Expected identifier after ','", getExceptionIndex());
+                                throw new ParseException("Expected parameter after ','", getExceptionIndex());
+                            }
+                            if (peek(":")) {
+                                match(":");
+                                if (peek(Token.Type.IDENTIFIER)) {
+                                    parameterTypes.add(tokens.get(0).getLiteral());
+                                    match(Token.Type.IDENTIFIER);
+                                }
+                                else {
+                                    throw new ParseException("Expected parameter type after ':'.", getExceptionIndex());
+                                }
+                            }
+                            else {
+                                parameterTypes.add(null);
                             }
                         }
                     }
                     // Check for the required closing parentheses and the "DO" keyword that must follow
                     if (peek(")")) {
                         match(")");
+
+                        // Account for the optional return type specified after the parameter list: ( ':' identifier )?
+                        if (peek(":")) {
+                            match(":");
+                            if (peek(Token.Type.IDENTIFIER)) {
+                                returnType = Optional.of(tokens.get(0).getLiteral());
+                                match(Token.Type.IDENTIFIER);
+                            }
+                            else {
+                                throw new ParseException("Expected return type after ':'.", getExceptionIndex());
+                            }
+                        }
                         if (peek("DO")) {
                             match("DO");
 
                             // While the "END" keyword is not found yet, parse and add each statement to the statementsList
-                            while (!peek("END")) { // TODO: test for infinite loops
+                            while (!peek("END")) {
                                 statementsList.add(parseStatement());
                             }
                             // If the required "END" keyword ends the statement, return the method with the necessary arguments
                             if (peek("END")) {
                                 match("END");
-                                return new Ast.Method(identifierToken, parametersList, statementsList);
+                                return new Ast.Method(identifierToken, parametersList, parameterTypes, returnType, statementsList);
                             }
         // Otherwise, throw a parse exception for any missing required tokens
                             else {
@@ -244,22 +300,38 @@ public final class Parser {
      * method should only be called if the next tokens start a declaration
      * statement, aka {@code LET}.
      */
-    //    'LET' identifier ('=' expression)? ';' |
+    // 'LET' identifier ('=' expression)? ';' |
+    // 'LET' identifier (':' identifier)? ('=' expression)? ';' | (Updated)
     public Ast.Statement.Declaration parseDeclarationStatement() throws ParseException {
         String identifierToken = "";
         Optional<Ast.Expression> optionalExpression = Optional.empty();
+        Optional<String> identifierToken2  = Optional.empty();
         if (peek("LET")) {
             match("LET");
             if (peek(Token.Type.IDENTIFIER)) {
                 identifierToken = tokens.get(0).getLiteral();
                 match(Token.Type.IDENTIFIER);
+
+                // Account for new optional part: (':' identifier)?
+                if (peek(":")) {
+                    match(":");
+                    if (peek(Token.Type.IDENTIFIER)) {
+                        identifierToken2 = Optional.of(tokens.get(0).getLiteral());
+                        match(Token.Type.IDENTIFIER);
+                    }
+                    else {
+                        throw new ParseException("Expected identifier after ':'.", getExceptionIndex());
+                    }
+                }
                 if (peek("=")) {
                     match(Token.Type.OPERATOR);
                     optionalExpression = Optional.of(parseExpression());
                 }
                 if (peek(";")) {
                     match (";");
-                    return new Ast.Statement.Declaration(identifierToken, optionalExpression);
+
+                    // Return the declaration statement with the optional second identifier if present
+                    return new Ast.Statement.Declaration(identifierToken, identifierToken2, optionalExpression);
                 }
                 else {
                     throw new ParseException("Expected ';'.", getExceptionIndex());
