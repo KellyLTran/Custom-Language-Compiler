@@ -64,6 +64,7 @@ public final class Parser {
 
         // Initialize the necessary variables for the Ast.Field method
         String identifierToken = "";
+        String identifierToken2 = "";
         boolean constantFlag = false;
         Optional<Ast.Expression> optionalExpression = Optional.empty();
 
@@ -80,6 +81,18 @@ public final class Parser {
                 identifierToken = tokens.get(0).getLiteral();
                 match(Token.Type.IDENTIFIER);
 
+                if (peek(":")) {
+                    match(":");
+                    if (peek(Token.Type.IDENTIFIER)) {
+                        identifierToken2 = tokens.get(0).getLiteral();
+                        match(Token.Type.IDENTIFIER);
+                    } else {
+                        throw new ParseException("Expected type identifier after ':'.", getExceptionIndex());
+                    }
+                } else {
+                    throw new ParseException("Expected ':'.", getExceptionIndex());
+                }
+
                 // If the optional equal sign is present, match then assign and parse the expression
                 if (peek("=")) {
                     match(Token.Type.OPERATOR);
@@ -88,7 +101,7 @@ public final class Parser {
                 // If the required semicolon ends the statement, return the field with the identifier, constant, and expression
                 if (peek(";")) {
                     match(";");
-                    return new Ast.Field(identifierToken, constantFlag, optionalExpression);
+                    return new Ast.Field(identifierToken, identifierToken2, constantFlag, optionalExpression);
                 }
         // Otherwise, throw a parse exception for any missing required tokens
                 else {
