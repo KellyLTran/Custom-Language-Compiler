@@ -133,6 +133,10 @@ public final class Analyzer implements Ast.Visitor<Void> {
     @Override
     public Void visit(Ast.Statement.Declaration ast) {
 
+        // If the type and value are not present, throw a Runtime Exception
+        if (!ast.getTypeName().isPresent() && !ast.getValue().isPresent()) {
+            throw new RuntimeException("The declared variable does not have a type or value.");
+        }
         // If the value of the declared variable is present, it must be visited before the variable is defined
         if (ast.getValue().isPresent()) {
             visit(ast.getValue().get());
@@ -151,13 +155,6 @@ public final class Analyzer implements Ast.Visitor<Void> {
         else {
             Environment.Variable declaredVariable = scope.defineVariable(ast.getName(), ast.getName(), ast.getValue().get().getType(), false, Environment.NIL);
             ast.setVariable(declaredVariable);
-
-            // If there was a missing type, return null, not an exception
-            return null;
-        }
-        // If neither are present, throw a Runtime Exception
-        if (!ast.getTypeName().isPresent() && !ast.getValue().isPresent()) {
-            throw new RuntimeException("The declared variable does not have a type or value.");
         }
         return null;
     }
@@ -188,7 +185,7 @@ public final class Analyzer implements Ast.Visitor<Void> {
         if (ast.getThenStatements().isEmpty()) {
             throw new RuntimeException("Then statements list is empty.");
         }
-        // Visit the then and else statements inside of a new scope for each one
+        // Visit the then and else statements inside a new scope for each one
         Scope previousScope = scope;
         scope = new Scope(previousScope);
         try {
@@ -208,16 +205,81 @@ public final class Analyzer implements Ast.Visitor<Void> {
         return null;
     }
 
-    // Validates a for statement. Throws a RuntimeException if:
-    //
-    //The identifier, when present, is not a Comparable type.
-    //The condition is not of type Boolean.
-    //The expression in the increment is not the same type as the identifier given at the start of the for signature.
-    //The list of statement is empty.
-    //After visiting the condition, visit each case (including the default) statement inside of a new scope for each case.
+    // Validate a for statement
     @Override
     public Void visit(Ast.Statement.For ast) {
-        throw new UnsupportedOperationException();  // TODO
+        Environment.Variable initVariable = null;
+        if (ast.getInitialization() != null) {
+            visit(ast.getInitialization());
+
+            // Check if the initialization is an assignment statement
+            if (ast.getInitialization() instanceof Ast.Statement.Assignment) {
+                Ast.Statement.Assignment initAssignment = (Ast.Statement.Assignment) ast.getInitialization();
+
+                // If the receiver is an access expression, such as an identifier, ensure it is a Comparable type
+                if (initAssignment.getReceiver() instanceof Ast.Expression.Access) {
+                    Ast.Expression.Access assignmentReceiver = (Ast.Expression.Access) initAssignment.getReceiver();
+                    Environment.Variable assignmentVariable = assignmentReceiver.getVariable();
+                    requireAssignable(Environment.Type.COMPARABLE, assignmentVariable.getType());
+
+                    // Store the variable for comparison with the increment later
+                    initVariable = assignmentVariable;
+                }
+                // If the Assignment Receiver is not an Access expression, throw a Runtime Exception
+                else {
+                    throw new RuntimeException("Assignment receiver is not an access expression.");
+                }
+            }
+            else {
+                throw new RuntimeException("Initialization is not an assignment statement.");
+            }
+        }
+        // Ensure the condition is of Boolean type
+        visit(ast.getCondition());
+        requireAssignable(Environment.Type.BOOLEAN, ast.getCondition().getType());
+
+        Environment.Variable incrVariable = null;
+        if (ast.getIncrement() != null) {
+            visit(ast.getIncrement());
+            if (ast.getIncrement() instanceof Ast.Statement.Assignment) {
+                Ast.Statement.Assignment incrAssignment = (Ast.Statement.Assignment) ast.getIncrement();
+                if (incrAssignment.getReceiver() instanceof Ast.Expression.Access) {
+                    Ast.Expression.Access assignmentReceiver = (Ast.Expression.Access) incrAssignment.getReceiver();
+                    Environment.Variable assignmentVariable = assignmentReceiver.getVariable();
+                    requireAssignable(Environment.Type.COMPARABLE, assignmentVariable.getType());
+                    incrVariable = assignmentVariable;
+                }
+                else {
+                    throw new RuntimeException("Assignment receiver is not an access expression.");
+                }
+            }
+            else {
+                throw new RuntimeException("Increment is not an assignment statement.");
+            }
+        }
+        // Ensure the expression in the increment is the same type as the identifier given at the start of the for signature
+        if (initVariable != null && incrVariable != null) {
+            if (!initVariable.getType().equals(incrVariable.getType())) {
+                throw new RuntimeException("Increment type does not match initialization type.");
+            }
+        }
+        // If the list of statement is empty, throw a Runtime exception
+        if (ast.getStatements().isEmpty()) {
+            throw new RuntimeException("For statements list is empty.");
+        }
+        // Visit each case (including the default) statement inside a new scope for each case
+        Scope previousScope = scope;
+        scope = new Scope(previousScope);
+        try {
+            List<Ast.Statement> forStatements = ast.getStatements();
+            for (int i = 0; i < forStatements.size(); i++) {
+                visit(forStatements.get(i));
+            }
+        }
+        finally {
+            scope = previousScope;
+        }
+        return null;
     }
 
     // Validate a while statement by visiting all of the while loop's statements in a new scope
