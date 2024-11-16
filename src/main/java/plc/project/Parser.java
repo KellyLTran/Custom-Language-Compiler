@@ -86,10 +86,12 @@ public final class Parser {
                     if (peek(Token.Type.IDENTIFIER)) {
                         identifierToken2 = tokens.get(0).getLiteral();
                         match(Token.Type.IDENTIFIER);
-                    } else {
-                        throw new ParseException("Expected type identifier after ':'.", getExceptionIndex());
                     }
-                } else {
+                    else {
+                        throw new ParseException("Expected identifier after ':'.", getExceptionIndex());
+                    }
+                }
+                else {
                     throw new ParseException("Expected ':'.", getExceptionIndex());
                 }
 
@@ -129,6 +131,8 @@ public final class Parser {
         String identifierToken = "";
         List<String> parametersList = new ArrayList<>();
         List<Ast.Statement> statementsList = new ArrayList<>();
+        List<String> parameterTypes = new ArrayList<>();
+        Optional<String> returnType = Optional.empty();
 
         // Check for the required DEF keyword, the identifier, and the opening parentheses that must follow
         if (peek("DEF")) {
@@ -139,39 +143,76 @@ public final class Parser {
                 if (peek("(")) {
                     match("(");
 
-                    // If an optional identifier exists after the opening parentheses, parse and add it to the parametersList
+                    // Parse parameters and their types if they are present
                     if (peek(Token.Type.IDENTIFIER)) {
                         parametersList.add(tokens.get(0).getLiteral());
                         match(Token.Type.IDENTIFIER);
 
-                        // While commas are present, parse and add each identifier to the parametersList
+                        // Check for parameter types
+                        if (peek(":")) {
+                            match(":");
+                            if (peek(Token.Type.IDENTIFIER)) {
+                                parameterTypes.add(tokens.get(0).getLiteral());
+                                match(Token.Type.IDENTIFIER);
+                            }
+                            else {
+                                throw new ParseException("Expected parameter type after ':'.", getExceptionIndex());
+                            }
+                        }
+                        else {
+                            parameterTypes.add(null);
+                        }
+                        // While commas are present, parse and add each identifier and its type to the parametersList
                         while (peek(",")) {
                             match(",");
                             if (peek(Token.Type.IDENTIFIER)) {
                                 parametersList.add(tokens.get(0).getLiteral());
                                 match(Token.Type.IDENTIFIER);
                             }
-
-                            // Otherwise, throw an exception if a comma is present without any identifiers following
                             else {
-                                throw new ParseException("Expected identifier after ','", getExceptionIndex());
+                                throw new ParseException("Expected parameter after ','", getExceptionIndex());
+                            }
+                            if (peek(":")) {
+                                match(":");
+                                if (peek(Token.Type.IDENTIFIER)) {
+                                    parameterTypes.add(tokens.get(0).getLiteral());
+                                    match(Token.Type.IDENTIFIER);
+                                }
+                                else {
+                                    throw new ParseException("Expected parameter type after ':'.", getExceptionIndex());
+                                }
+                            }
+                            else {
+                                parameterTypes.add(null);
                             }
                         }
                     }
                     // Check for the required closing parentheses and the "DO" keyword that must follow
                     if (peek(")")) {
                         match(")");
+
+                        // Account for the optional return type specified after the parameter list: ( ':' identifier )?
+                        if (peek(":")) {
+                            match(":");
+                            if (peek(Token.Type.IDENTIFIER)) {
+                                returnType = Optional.of(tokens.get(0).getLiteral());
+                                match(Token.Type.IDENTIFIER);
+                            }
+                            else {
+                                throw new ParseException("Expected return type after ':'.", getExceptionIndex());
+                            }
+                        }
                         if (peek("DO")) {
                             match("DO");
 
                             // While the "END" keyword is not found yet, parse and add each statement to the statementsList
-                            while (!peek("END")) { // TODO: test for infinite loops
+                            while (!peek("END")) {
                                 statementsList.add(parseStatement());
                             }
                             // If the required "END" keyword ends the statement, return the method with the necessary arguments
                             if (peek("END")) {
                                 match("END");
-                                return new Ast.Method(identifierToken, parametersList, statementsList);
+                                return new Ast.Method(identifierToken, parametersList, parameterTypes, returnType, statementsList);
                             }
         // Otherwise, throw a parse exception for any missing required tokens
                             else {
@@ -279,7 +320,7 @@ public final class Parser {
                         match(Token.Type.IDENTIFIER);
                     }
                     else {
-                        throw new ParseException("Expected identifier.", getExceptionIndex());
+                        throw new ParseException("Expected identifier after ':'.", getExceptionIndex());
                     }
                 }
                 if (peek("=")) {
