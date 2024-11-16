@@ -59,6 +59,7 @@ public final class Parser {
      * next tokens start a field, aka {@code LET}.
      */
     // field ::= 'LET' 'CONST'? identifier ('=' expression)? ';'
+    // field ::= 'LET' 'CONST'? identifier ':' identifier ('=' expression)? ';' (Updated After Analyzer)
     public Ast.Field parseField() throws ParseException {
 
         // Initialize the necessary variables for the Ast.Field method
@@ -108,6 +109,7 @@ public final class Parser {
      * next tokens start a method, aka {@code DEF}.
      */
     // method ::= 'DEF' identifier '(' (identifier (',' identifier)*)? ')' 'DO' statement* 'END'
+    // method ::= 'DEF' identifier '(' (identifier ':' identifier (',' identifier ':' identifier)*)? ')' (':' identifier)? 'DO' statement* 'END' (Updated)
     public Ast.Method parseMethod() throws ParseException {
 
         // Initialize the necessary variables for the Ast.Method method
@@ -244,22 +246,38 @@ public final class Parser {
      * method should only be called if the next tokens start a declaration
      * statement, aka {@code LET}.
      */
-    //    'LET' identifier ('=' expression)? ';' |
+    // 'LET' identifier ('=' expression)? ';' |
+    // 'LET' identifier (':' identifier)? ('=' expression)? ';' | (Updated)
     public Ast.Statement.Declaration parseDeclarationStatement() throws ParseException {
         String identifierToken = "";
         Optional<Ast.Expression> optionalExpression = Optional.empty();
+        Optional<String> identifierToken2  = Optional.empty();
         if (peek("LET")) {
             match("LET");
             if (peek(Token.Type.IDENTIFIER)) {
                 identifierToken = tokens.get(0).getLiteral();
                 match(Token.Type.IDENTIFIER);
+
+                // Account for new optional part: (':' identifier)?
+                if (peek(":")) {
+                    match(":");
+                    if (peek(Token.Type.IDENTIFIER)) {
+                        identifierToken2 = Optional.of(tokens.get(0).getLiteral());
+                        match(Token.Type.IDENTIFIER);
+                    }
+                    else {
+                        throw new ParseException("Expected identifier.", getExceptionIndex());
+                    }
+                }
                 if (peek("=")) {
                     match(Token.Type.OPERATOR);
                     optionalExpression = Optional.of(parseExpression());
                 }
                 if (peek(";")) {
                     match (";");
-                    return new Ast.Statement.Declaration(identifierToken, optionalExpression);
+
+                    // Return the declaration statement with the optional second identifier if present
+                    return new Ast.Statement.Declaration(identifierToken, identifierToken2, optionalExpression);
                 }
                 else {
                     throw new ParseException("Expected ';'.", getExceptionIndex());
