@@ -79,7 +79,7 @@ public final class Analyzer implements Ast.Visitor<Void> {
         // Retrieve the function's parameter and return types from the environment using the corresponding names in the method
         for (int i = 0; i < methodParTypeNames.size(); i++) {
             String typeName = methodParTypeNames.get(i);
-            methodParTypeNames.set(i, String.valueOf(Environment.getType(typeName)));
+            methodParTypes.add(Environment.getType(typeName));
         }
         // Coordinate with Ast.Statement.Return and save the expected return type in a variable so it is known
         Environment.Type returnType;
