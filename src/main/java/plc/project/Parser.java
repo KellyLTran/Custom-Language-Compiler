@@ -160,7 +160,7 @@ public final class Parser {
                             }
                         }
                         else {
-                            parameterTypes.add(null);
+                            throw new ParseException("Expected ':' after parameter name.", getExceptionIndex());
                         }
                         // While commas are present, parse and add each identifier and its type to the parametersList
                         while (peek(",")) {
@@ -183,7 +183,7 @@ public final class Parser {
                                 }
                             }
                             else {
-                                parameterTypes.add(null);
+                                throw new ParseException("Expected ':' after parameter name.", getExceptionIndex());
                             }
                         }
                     }
