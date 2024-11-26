@@ -75,9 +75,26 @@ public final class Generator implements Ast.Visitor<Void> {
         return null;
     }
 
+    // Generate a field, expressed in Java as a property within our generated class Main
     @Override
     public Void visit(Ast.Field ast) {
-        throw new UnsupportedOperationException(); //TODO
+
+        // Declare a constant field in Java using the final modifier (use keyword final and a single blank space, separating the modifier from the type
+        if (ast.getConstant()) {
+            print("final " + ast.getTypeName() + " " + ast.getName());
+        }
+        // A non-constant field will consist of the type name and the variable name stored in the AST separated by a single space character
+        else {
+            print(ast.getTypeName() + " " + ast.getName());
+        }
+        // If a value is present, then an equal sign character with surrounding single spaces is generated followed by the variable value (expression)
+        if (ast.getValue().isPresent()) {
+            print(" = ");
+            visit(ast.getValue().get());
+        }
+        // A semicolon is generated at the end
+        print(";");
+        return null;
     }
 
     @Override
