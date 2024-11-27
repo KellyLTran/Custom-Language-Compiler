@@ -162,7 +162,7 @@ public final class Generator implements Ast.Visitor<Void> {
     public Void visit(Ast.Statement.Declaration ast) {
 
         // The expression should consist of the type name and the variable name stored in the AST separated by a single space
-        print(ast.getTypeName(), " ", ast.getName());
+        print(ast.getVariable().getType().getJvmName(), " ", ast.getVariable().getJvmName());
 
         // If a value is present, then an equal sign with surrounding single spaces is generated followed by the generated variable value
         if (ast.getValue().isPresent()) {
