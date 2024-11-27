@@ -252,7 +252,69 @@ public final class Generator implements Ast.Visitor<Void> {
     // Generate a for loop expression
     @Override
     public Void visit(Ast.Statement.For ast) {
-        throw new UnsupportedOperationException(); // TODO
+        // The expression should consist of the for keyword followed by a single space and an opening parenthesis
+        print("for ( ");
+
+        // Generate optionally an initialization statement
+        if (ast.getInitialization() != null) {
+            if (ast.getInitialization() instanceof Ast.Statement.Declaration) {
+                Ast.Statement.Declaration initDeclaration = (Ast.Statement.Declaration) ast.getInitialization();
+
+                // A blank space will precede and follow each statement of the for signature, whether or not a statement is provided
+                print(initDeclaration.getVariable().getType().getJvmName(), " ", initDeclaration.getVariable().getJvmName());
+                if (initDeclaration.getValue().isPresent()) {
+                    print(" = ");
+                    visit(initDeclaration.getValue().get());
+                }
+            }
+            else if (ast.getInitialization() instanceof Ast.Statement.Assignment) {
+                Ast.Statement.Assignment initAssignment = (Ast.Statement.Assignment) ast.getInitialization();
+                visit(initAssignment.getReceiver());
+                print(" = ");
+                visit(initAssignment.getValue());
+            }
+        }
+        print(";");
+
+        // Generate a conditional expression
+        if (ast.getCondition() != null) {
+        print(" ");
+            visit(ast.getCondition());
+        }
+        print(";");
+
+         // Generate optionally an increment statement
+        if (ast.getIncrement() != null) {
+            print(" ");
+            if (ast.getIncrement() instanceof Ast.Statement.Assignment) {
+                Ast.Statement.Assignment incrAssignment = (Ast.Statement.Assignment) ast.getIncrement();
+                visit(incrAssignment.getReceiver());
+                print(" = ");
+                visit(incrAssignment.getValue());
+            }
+        }
+        // Following a single space after the closing parenthesis of the signature, the opening brace should be generated on the same line
+        print(" ) {");
+        indent++;
+
+        // If the statements are empty, the closing brace follows immediately on the same line with no spaces in between
+        if (ast.getStatements().isEmpty()) {
+            print("}");
+        indent--;
+        }
+        // Otherwise, each statement is generated on a new line with increased indentation
+        else {
+            List<Ast.Statement> forStatements = ast.getStatements();
+            for (int i = 0; i < forStatements.size(); i++) {
+                newline(indent);
+                visit(forStatements.get(i));
+            }
+            // Followed by a closing brace on a new line with the original indentation
+            indent--;
+            newline(indent);
+            print("}");
+        }
+        return null;
     }
 
 
