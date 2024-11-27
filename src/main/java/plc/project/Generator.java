@@ -234,7 +234,7 @@ public final class Generator implements Ast.Visitor<Void> {
 
     @Override
     public Void visit(Ast.Statement.For ast) {
-        throw new UnsupportedOperationException();
+        throw new UnsupportedOperationException(); // TODO
     }
 
 
@@ -326,8 +326,22 @@ public final class Generator implements Ast.Visitor<Void> {
     }
 
 
+    // Generate a function expression
     @Override
     public Void visit(Ast.Expression.Function ast) {
-        throw new UnsupportedOperationException(); //TODO
+        // The name used should be the jvmName of the function stored in the AST
+        print(ast.getFunction().getJvmName());
+
+        // Followed by a comma-separated list of the generated argument expressions surrounded by parenthesis
+        print("(");
+        List<Ast.Expression> expressionArguments = ast.getArguments();
+        for (int i = 0; i < expressionArguments.size(); i++) {
+            visit(expressionArguments.get(i));
+            if (i < expressionArguments.size() - 1) {
+                print(", ");
+            }
+        }
+        print(")");
+        return null;
     }
 }
