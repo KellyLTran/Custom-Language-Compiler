@@ -231,14 +231,32 @@ public final class Generator implements Ast.Visitor<Void> {
         return null;
     }
 
+
     @Override
     public Void visit(Ast.Statement.For ast) {
         throw new UnsupportedOperationException(); //TODO
     }
 
+
+    // Generate a while loop expression
     @Override
     public Void visit(Ast.Statement.While ast) {
-        throw new UnsupportedOperationException(); //TODO
+        print("while (");
+        visit(ast.getCondition());
+        print(") {");
+        if (ast.getStatements().isEmpty()) {
+            print("}");
+        }
+        else {
+            List<Ast.Statement> whileStatements = ast.getStatements();
+            for (int i = 0; i < whileStatements.size(); i++) {
+                newline(1);
+                visit(whileStatements.get(i));
+            }
+            newline(0);
+            print("}");
+        }
+        return null;
     }
 
 
