@@ -31,6 +31,7 @@ public final class Generator implements Ast.Visitor<Void> {
         }
     }
 
+
     // Generate a source, including a definition for the Main class that contains our code as well as the public static void main(String[] args) method used as the entry point for Java
     @Override
     public Void visit(Ast.Source ast) {
@@ -77,6 +78,7 @@ public final class Generator implements Ast.Visitor<Void> {
         return null;
     }
 
+
     // Generate a field, expressed in Java as a property within our generated class Main
     @Override
     public Void visit(Ast.Field ast) {
@@ -98,6 +100,7 @@ public final class Generator implements Ast.Visitor<Void> {
         print(";");
         return null;
     }
+
 
     // Generate a method, expressed in Java as a method within our generated class Main
     @Override
@@ -144,14 +147,28 @@ public final class Generator implements Ast.Visitor<Void> {
         return null;
     }
 
+
     @Override
     public Void visit(Ast.Statement.Expression ast) {
         throw new UnsupportedOperationException(); //TODO
     }
 
+    
+    // Generate a declaration expression
     @Override
     public Void visit(Ast.Statement.Declaration ast) {
-        throw new UnsupportedOperationException(); //TODO
+
+        // The expression should consist of the type name and the variable name stored in the AST separated by a single space
+        print(ast.getTypeName(), " ", ast.getName());
+
+        // If a value is present, then an equal sign with surrounding single spaces is generated followed by the generated variable value
+        if (ast.getValue().isPresent()) {
+            print(" = ");
+            visit(ast.getValue().get());
+        }
+        // A semicolon should be generated at the end
+        print(";");
+        return null;
     }
 
     @Override
@@ -178,6 +195,7 @@ public final class Generator implements Ast.Visitor<Void> {
     public Void visit(Ast.Statement.Return ast) {
         throw new UnsupportedOperationException(); //TODO
     }
+
 
     // Generate a literal expression (the value of the literal found in the AST)
     @Override
