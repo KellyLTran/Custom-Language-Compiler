@@ -154,7 +154,7 @@ public final class Generator implements Ast.Visitor<Void> {
         print(";");
         return null;
     }
-    
+
     // Generate a declaration expression
     @Override
     public Void visit(Ast.Statement.Declaration ast) {
@@ -172,9 +172,19 @@ public final class Generator implements Ast.Visitor<Void> {
         return null;
     }
 
+    // Generate a variable assignment expression
     @Override
     public Void visit(Ast.Statement.Assignment ast) {
-        throw new UnsupportedOperationException(); //TODO
+        // The name should be the receiver of the variable stored in the AST
+        visit(ast.getReceiver());
+
+        // An equal sign character with surrounding single spaces should be generated between the name and value
+        print(" = ");
+
+        // The value should be the generated value of the variable, and a semicolon generated at the end
+        visit(ast.getValue());
+        print(";");
+        return null;
     }
 
     @Override
