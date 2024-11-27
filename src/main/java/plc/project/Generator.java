@@ -317,11 +317,15 @@ public final class Generator implements Ast.Visitor<Void> {
     }
 
 
+    // Generate an access expression
     @Override
     public Void visit(Ast.Expression.Access ast) {
-        throw new UnsupportedOperationException(); //TODO
+        // The name used should be the jvmName of the variable stored in the AST.
+        print(ast.getVariable().getJvmName());
+        return null;
     }
 
+    
     @Override
     public Void visit(Ast.Expression.Function ast) {
         throw new UnsupportedOperationException(); //TODO
