@@ -190,9 +190,45 @@ public final class Generator implements Ast.Visitor<Void> {
         return null;
     }
 
+
+    // Generate an If expression
     @Override
     public Void visit(Ast.Statement.If ast) {
-        throw new UnsupportedOperationException(); //TODO
+
+        // The expression should consist of the if keyword, followed by a single space and the generated condition with the surrounding parenthesis
+        print("if (");
+        visit(ast.getCondition());
+
+        // Following a single space, the opening brace should be generated on the same line
+        print(") {");
+
+        // If the statements are empty, the closing brace follows immediately on the same line with no spaces in between
+        if (ast.getThenStatements().isEmpty()) {
+            print("}");
+        }
+        // Otherwise, each statement is generated on a new line with increased indentation
+        else {
+            List<Ast.Statement> thenStatements = ast.getThenStatements();
+            for (int i = 0; i < thenStatements.size(); i++) {
+                newline(1);
+                visit(thenStatements.get(i));
+            }
+            // followed by a closing brace on a new line with the original indentation
+            newline(0);
+        }
+        // If there is an else block, then generate the else keyword on the same line with the same block formatting
+        if (!ast.getElseStatements().isEmpty()) {
+            print(" else {");
+            List<Ast.Statement> elseStatements = ast.getElseStatements();
+            for (int i = 0; i < elseStatements.size(); i++) {
+                newline(1);
+                visit(elseStatements.get(i));
+            }
+            newline(0);
+            print("}");
+        }
+        // If there is not an else block, then the entire else section is left out of the generated code
+        return null;
     }
 
     @Override
