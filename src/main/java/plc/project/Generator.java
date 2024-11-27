@@ -216,6 +216,7 @@ public final class Generator implements Ast.Visitor<Void> {
             // Followed by a closing brace on a new line with the original indentation
             newline(0);
         }
+        print("}");
         // If there is an else block, then generate the else keyword on the same line with the same block formatting
         if (!ast.getElseStatements().isEmpty()) {
             print(" else {");
