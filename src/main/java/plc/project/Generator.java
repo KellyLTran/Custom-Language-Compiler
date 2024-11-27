@@ -99,9 +99,49 @@ public final class Generator implements Ast.Visitor<Void> {
         return null;
     }
 
+    // Generate a method, expressed in Java as a method within our generated class Main
     @Override
     public Void visit(Ast.Method ast) {
-        throw new UnsupportedOperationException(); //TODO
+        // The method should begin with the method's JVM type name followed by the method name, both of which are found in the AST
+        print(ast.getFunction().getReturnType().getJvmName() + " " + ast.getName());
+
+        // Generate a comma-separated list of the method parameters surrounded by parenthesis
+        print("(");
+        for (int i = 0; i < ast.getParameters().size(); i++) {
+
+            // Each parameter will consist of a JVM type name and the parameter name with a single space separating them
+            String parameterType = ast.getParameterTypeNames().get(i);
+            String parameterName = ast.getParameters().get(i);
+            print(parameterType + " " + parameterName);
+
+            // A single space will be placed after the list comma and before the next parameter type
+            if (i < ast.getParameters().size() - 1) {
+                print(", ");
+            }
+        }
+        // No space will be placed after the opening parenthesis and before the closing parenthesis
+        print(")");
+
+        // Following a single space, the opening brace should be generated on the same line
+        print(" {");
+
+        // If the statements are empty, the closing brace follows immediately on the same line with no spaces in between
+        if (ast.getStatements().isEmpty()) {
+            print("}");
+        }
+        // Otherwise, each statement is generated on a new line with increased indentation
+        else {
+            List<Ast.Statement> methodStatementList = ast.getStatements();
+            for (int i = 0; i < methodStatementList.size(); i++) {
+                Ast.Statement methodStatement = methodStatementList.get(i);
+                newline(1);
+                visit(methodStatement);
+            }
+            // followed by a closing brace on a new line with the original indentation
+            newline(0);
+            print("}");
+        }
+        return null;
     }
 
     @Override
