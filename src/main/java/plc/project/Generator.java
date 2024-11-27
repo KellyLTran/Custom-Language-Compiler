@@ -305,10 +305,17 @@ public final class Generator implements Ast.Visitor<Void> {
     }
 
 
+    // Generate a binary expression that generates in order of the left expression, binary operator, and right expression
     @Override
     public Void visit(Ast.Expression.Binary ast) {
-        throw new UnsupportedOperationException(); //TODO
+        visit(ast.getLeft());
+
+        // Generate the corresponding JVM binary operator with a single space on each side
+        print(" ", ast.getOperator(), " ");
+        visit(ast.getRight());
+        return null;
     }
+
 
     @Override
     public Void visit(Ast.Expression.Access ast) {
