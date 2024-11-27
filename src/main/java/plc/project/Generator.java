@@ -212,31 +212,36 @@ public final class Generator implements Ast.Visitor<Void> {
 
         // Following a single space, the opening brace should be generated on the same line
         print(") {");
+        indent++;
 
         // If the statements are empty, the closing brace follows immediately on the same line with no spaces in between
         if (ast.getThenStatements().isEmpty()) {
             print("}");
+            indent--;
         }
         // Otherwise, each statement is generated on a new line with increased indentation
         else {
             List<Ast.Statement> thenStatements = ast.getThenStatements();
             for (int i = 0; i < thenStatements.size(); i++) {
-                newline(1);
+                newline(indent);
                 visit(thenStatements.get(i));
             }
             // Followed by a closing brace on a new line with the original indentation
-            newline(0);
+            indent--;
+            newline(indent);
         }
         print("}");
         // If there is an else block, then generate the else keyword on the same line with the same block formatting
         if (!ast.getElseStatements().isEmpty()) {
             print(" else {");
+            indent++;
             List<Ast.Statement> elseStatements = ast.getElseStatements();
             for (int i = 0; i < elseStatements.size(); i++) {
-                newline(1);
+                newline(indent);
                 visit(elseStatements.get(i));
             }
-            newline(0);
+            indent--;
+            newline(indent);
             print("}");
         }
         // If there is not an else block, then the entire else section is left out of the generated code
@@ -257,16 +262,19 @@ public final class Generator implements Ast.Visitor<Void> {
         print("while (");
         visit(ast.getCondition());
         print(") {");
+        indent++;
         if (ast.getStatements().isEmpty()) {
             print("}");
+            indent--;
         }
         else {
             List<Ast.Statement> whileStatements = ast.getStatements();
             for (int i = 0; i < whileStatements.size(); i++) {
-                newline(1);
+                newline(indent);
                 visit(whileStatements.get(i));
             }
-            newline(0);
+            indent--;
+            newline(indent);
             print("}");
         }
         return null;
