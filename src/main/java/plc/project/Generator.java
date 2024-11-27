@@ -234,7 +234,7 @@ public final class Generator implements Ast.Visitor<Void> {
 
     @Override
     public Void visit(Ast.Statement.For ast) {
-        throw new UnsupportedOperationException(); //TODO
+        throw new UnsupportedOperationException();
     }
 
 
@@ -263,7 +263,7 @@ public final class Generator implements Ast.Visitor<Void> {
     // Generate a return expression
     @Override
     public Void visit(Ast.Statement.Return ast) {
-        // The expression will consist of the return keyword followed by a single space and the corresponding generated expression value
+        // The expression should consist of the return keyword followed by a single space and the corresponding generated expression value
         print("return ");
         visit(ast.getValue());
         print(";");
@@ -294,10 +294,16 @@ public final class Generator implements Ast.Visitor<Void> {
         return null;
     }
 
+
+    // Generate a group expression that should be a generated expression surrounded by parentheses
     @Override
     public Void visit(Ast.Expression.Group ast) {
-        throw new UnsupportedOperationException(); //TODO
+        print("(");
+        visit(ast.getExpression());
+        print(")");
+        return null;
     }
+
 
     @Override
     public Void visit(Ast.Expression.Binary ast) {
