@@ -147,6 +147,7 @@ public final class Generator implements Ast.Visitor<Void> {
         return null;
     }
 
+
     // Generate an expression that should consist of the generated expression found in the AST followed by a semicolon
     @Override
     public Void visit(Ast.Statement.Expression ast) {
@@ -154,6 +155,7 @@ public final class Generator implements Ast.Visitor<Void> {
         print(";");
         return null;
     }
+
 
     // Generate a declaration expression
     @Override
@@ -171,6 +173,7 @@ public final class Generator implements Ast.Visitor<Void> {
         print(";");
         return null;
     }
+
 
     // Generate a variable assignment expression
     @Override
@@ -202,9 +205,15 @@ public final class Generator implements Ast.Visitor<Void> {
         throw new UnsupportedOperationException(); //TODO
     }
 
+
+    // Generate a return expression
     @Override
     public Void visit(Ast.Statement.Return ast) {
-        throw new UnsupportedOperationException(); //TODO
+        // The expression will consist of the return keyword followed by a single space and the corresponding generated expression value
+        print("return ");
+        visit(ast.getValue());
+        print(";");
+        return null;
     }
 
 
