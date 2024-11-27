@@ -38,25 +38,31 @@ public final class Generator implements Ast.Visitor<Void> {
 
         // Generate the class header, including the opening brace
         print("public class Main {");
+        indent++;
         newline(0);
 
         // Generate the source's fields (properties in Java)
         List<Ast.Field> sourceFieldList = ast.getFields();
         for (int i = 0; i < sourceFieldList.size(); i++) {
             Ast.Field sourceField = sourceFieldList.get(i);
-            newline(1);
+            newline(indent);
             visit(sourceField);
         }
+        if (!sourceFieldList.isEmpty()) {
+            newline(0);
+        }
         // Generate Java's main method [main(String[] args)]
-        newline(1);
+        newline(indent);
         print("public static void main(String[] args) {");
-        newline(2);
+        indent++;
 
         // new Main() creates an instance of our Main class
         // .main() calls our language's main method (having a different signature since it does not take arguments)
         // System.exit is used to specify the exit code of a Java program, unlike C/C++ which does so automatically
+        newline(indent);
         print("System.exit(new Main().main());");
-        newline(1);
+        indent--;
+        newline(indent);
         print("}");
 
         // Properties are grouped together while the generated Java methods are separated by an empty line with newline(0)
@@ -69,10 +75,12 @@ public final class Generator implements Ast.Visitor<Void> {
         List<Ast.Method> sourceMethodList = ast.getMethods();
         for (int i = 0; i < sourceMethodList.size(); i++) {
             Ast.Method sourceMethod = sourceMethodList.get(i);
-            newline(1);
+            newline(indent);
             visit(sourceMethod);
-            newline(0);
         }
+        newline(0);
+        indent--;
+        newline(indent);
         // Generate the closing brace for the class
         print("}");
         return null;
@@ -127,21 +135,24 @@ public final class Generator implements Ast.Visitor<Void> {
 
         // Following a single space, the opening brace should be generated on the same line
         print(" {");
+        indent++;
 
         // If the statements are empty, the closing brace follows immediately on the same line with no spaces in between
         if (ast.getStatements().isEmpty()) {
             print("}");
+            indent--;
         }
         // Otherwise, each statement is generated on a new line with increased indentation
         else {
             List<Ast.Statement> methodStatementList = ast.getStatements();
             for (int i = 0; i < methodStatementList.size(); i++) {
                 Ast.Statement methodStatement = methodStatementList.get(i);
-                newline(1);
+                newline(indent);
                 visit(methodStatement);
             }
             // Followed by a closing brace on a new line with the original indentation
-            newline(0);
+            indent--;
+            newline(indent);
             print("}");
         }
         return null;
@@ -236,43 +247,7 @@ public final class Generator implements Ast.Visitor<Void> {
     // Generate a for loop expression
     @Override
     public Void visit(Ast.Statement.For ast) {
-        // The expression should consist of the for keyword followed by a single space and an opening parenthesis
-        print("for (");
-
-        // Generate optionally an initialization statement
-        if (ast.getInitialization() != null) {
-            visit(ast.getInitialization());
-        }
-        // A blank space will precede and follow each statement of the for signature, whether or not a statement is provided
-        print(" ");
-
-        // Generate a conditional expression
-        visit(ast.getCondition());
-        print(" ");
-
-        // Generate optionally an increment statement
-        if (ast.getIncrement() != null) {
-            visit(ast.getIncrement());
-        }
-        // Following a single space after the closing parenthesis of the signature, the opening brace should be generated on the same line
-        print(") {");
-
-        // If the statements are empty, the closing brace follows immediately on the same line with no spaces in between
-        if (ast.getStatements().isEmpty()) {
-            print("}");
-        }
-        // Otherwise, each statement is generated on a new line with increased indentation
-        else {
-            List<Ast.Statement> forStatements = ast.getStatements();
-            for (int i = 0; i < forStatements.size(); i++) {
-                newline(1);
-                visit(forStatements.get(i));
-            }
-            // Followed by a closing brace on a new line with the original indentation
-            newline(0);
-            print("}");
-        }
-        return null;
+        throw new UnsupportedOperationException(); // TODO
     }
 
 
