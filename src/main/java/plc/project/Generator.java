@@ -2,6 +2,8 @@ package plc.project;
 
 import java.io.PrintWriter;
 import java.util.List;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 
 public final class Generator implements Ast.Visitor<Void> {
 
@@ -137,9 +139,27 @@ public final class Generator implements Ast.Visitor<Void> {
         throw new UnsupportedOperationException(); //TODO
     }
 
+    // Generate a literal expression (the value of the literal found in the AST)
     @Override
     public Void visit(Ast.Expression.Literal ast) {
-        throw new UnsupportedOperationException(); //TODO
+        Object literalExpression = ast.getLiteral();
+        if (literalExpression instanceof Boolean) {
+            print(literalExpression.toString());
+        }
+        // For characters and strings, include the surrounding quotes (No need to convert escape characters back to their escape sequence)
+        else if (literalExpression instanceof Character) {
+            print("'" + literalExpression + "'");
+        }
+        else if (literalExpression instanceof String) {
+            print("\"" + literalExpression + "\"");
+        }
+        else if (literalExpression instanceof BigDecimal) {
+            print(literalExpression.toString());
+        }
+        else if (literalExpression instanceof BigInteger) {
+            print(literalExpression.toString());
+        }
+        return null;
     }
 
     @Override
