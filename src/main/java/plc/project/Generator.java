@@ -147,12 +147,13 @@ public final class Generator implements Ast.Visitor<Void> {
         return null;
     }
 
-
+    // Generate an expression that should consist of the generated expression found in the AST followed by a semicolon
     @Override
     public Void visit(Ast.Statement.Expression ast) {
-        throw new UnsupportedOperationException(); //TODO
+        visit(ast.getExpression());
+        print(";");
+        return null;
     }
-
     
     // Generate a declaration expression
     @Override
