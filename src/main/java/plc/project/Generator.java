@@ -35,7 +35,6 @@ public final class Generator implements Ast.Visitor<Void> {
     // Generate a source, including a definition for the Main class that contains our code as well as the public static void main(String[] args) method used as the entry point for Java
     @Override
     public Void visit(Ast.Source ast) {
-
         // Generate the class header, including the opening brace
         print("public class Main {");
         indent++;
@@ -90,14 +89,15 @@ public final class Generator implements Ast.Visitor<Void> {
     // Generate a field, expressed in Java as a property within our generated class Main
     @Override
     public Void visit(Ast.Field ast) {
+        String fieldTypeName = ast.getVariable().getType().getJvmName();
 
         // Declare a constant field in Java using the final modifier (use keyword final and a single blank space, separating the modifier from the type
         if (ast.getConstant()) {
-            print("final " + ast.getTypeName() + " " + ast.getName());
+            print("final " + fieldTypeName + " " + ast.getName());
         }
         // A non-constant field will consist of the type name and the variable name stored in the AST separated by a single space character
         else {
-            print(ast.getTypeName() + " " + ast.getName());
+            print(fieldTypeName + " " + ast.getName());
         }
         // If a value is present, then an equal sign character with surrounding single spaces is generated followed by the variable value (expression)
         if (ast.getValue().isPresent()) {
@@ -114,14 +114,18 @@ public final class Generator implements Ast.Visitor<Void> {
     @Override
     public Void visit(Ast.Method ast) {
         // The method should begin with the method's JVM type name followed by the method name, both of which are found in the AST
-        print(ast.getFunction().getReturnType().getJvmName() + " " + ast.getName());
+        String returnType = ast.getFunction().getReturnType().getJvmName();
+        if (returnType.equals("Void")) {
+            returnType = "void";
+        }
+        print(returnType + " " + ast.getName());
 
         // Generate a comma-separated list of the method parameters surrounded by parenthesis
         print("(");
         for (int i = 0; i < ast.getParameters().size(); i++) {
 
             // Each parameter will consist of a JVM type name and the parameter name with a single space separating them
-            String parameterType = ast.getParameterTypeNames().get(i);
+            String parameterType = ast.getFunction().getParameterTypes().get(i).getJvmName();
             String parameterName = ast.getParameters().get(i);
             print(parameterType + " " + parameterName);
 
@@ -171,7 +175,6 @@ public final class Generator implements Ast.Visitor<Void> {
     // Generate a declaration expression
     @Override
     public Void visit(Ast.Statement.Declaration ast) {
-
         // The expression should consist of the type name and the variable name stored in the AST separated by a single space
         print(ast.getVariable().getType().getJvmName(), " ", ast.getVariable().getJvmName());
 
@@ -205,7 +208,6 @@ public final class Generator implements Ast.Visitor<Void> {
     // Generate an If expression
     @Override
     public Void visit(Ast.Statement.If ast) {
-
         // The expression should consist of the if keyword, followed by a single space and the generated condition with the surrounding parenthesis
         print("if (");
         visit(ast.getCondition());
@@ -326,6 +328,7 @@ public final class Generator implements Ast.Visitor<Void> {
         print(") {");
         indent++;
         if (ast.getStatements().isEmpty()) {
+            newline(indent);
             print("}");
             indent--;
         }
@@ -403,6 +406,11 @@ public final class Generator implements Ast.Visitor<Void> {
     // Generate an access expression
     @Override
     public Void visit(Ast.Expression.Access ast) {
+        // Check if the receiver, such as object.field, is present
+        if (ast.getReceiver().isPresent()) {
+            visit(ast.getReceiver().get());
+            print(".");
+        }
         // The name used should be the jvmName of the variable stored in the AST
         print(ast.getVariable().getJvmName());
         return null;
@@ -412,6 +420,11 @@ public final class Generator implements Ast.Visitor<Void> {
     // Generate a function expression
     @Override
     public Void visit(Ast.Expression.Function ast) {
+        // Check if the receiver, such as object.field, is present
+        if (ast.getReceiver().isPresent()) {
+            visit(ast.getReceiver().get());
+            print(".");
+        }
         // The name used should be the jvmName of the function stored in the AST
         print(ast.getFunction().getJvmName());
 
