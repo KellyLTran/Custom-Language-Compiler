@@ -403,6 +403,11 @@ public final class Generator implements Ast.Visitor<Void> {
     // Generate an access expression
     @Override
     public Void visit(Ast.Expression.Access ast) {
+        // Check if the receiver, such as object.field, is present
+        if (ast.getReceiver().isPresent()) {
+            visit(ast.getReceiver().get());
+            print(".");
+        }
         // The name used should be the jvmName of the variable stored in the AST
         print(ast.getVariable().getJvmName());
         return null;
