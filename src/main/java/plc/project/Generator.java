@@ -90,14 +90,15 @@ public final class Generator implements Ast.Visitor<Void> {
     // Generate a field, expressed in Java as a property within our generated class Main
     @Override
     public Void visit(Ast.Field ast) {
+        String fieldTypeName = ast.getVariable().getType().getJvmName();
 
         // Declare a constant field in Java using the final modifier (use keyword final and a single blank space, separating the modifier from the type
         if (ast.getConstant()) {
-            print("final " + ast.getTypeName() + " " + ast.getName());
+            print("final " + fieldTypeName + " " + ast.getName());
         }
         // A non-constant field will consist of the type name and the variable name stored in the AST separated by a single space character
         else {
-            print(ast.getTypeName() + " " + ast.getName());
+            print(fieldTypeName + " " + ast.getName());
         }
         // If a value is present, then an equal sign character with surrounding single spaces is generated followed by the variable value (expression)
         if (ast.getValue().isPresent()) {
@@ -113,6 +114,7 @@ public final class Generator implements Ast.Visitor<Void> {
     // Generate a method, expressed in Java as a method within our generated class Main
     @Override
     public Void visit(Ast.Method ast) {
+
         // The method should begin with the method's JVM type name followed by the method name, both of which are found in the AST
         print(ast.getFunction().getReturnType().getJvmName() + " " + ast.getName());
 
@@ -121,7 +123,7 @@ public final class Generator implements Ast.Visitor<Void> {
         for (int i = 0; i < ast.getParameters().size(); i++) {
 
             // Each parameter will consist of a JVM type name and the parameter name with a single space separating them
-            String parameterType = ast.getParameterTypeNames().get(i);
+            String parameterType = ast.getFunction().getParameterTypes().get(i).getJvmName();
             String parameterName = ast.getParameters().get(i);
             print(parameterType + " " + parameterName);
 
@@ -326,6 +328,7 @@ public final class Generator implements Ast.Visitor<Void> {
         print(") {");
         indent++;
         if (ast.getStatements().isEmpty()) {
+            newline(indent);
             print("}");
             indent--;
         }
