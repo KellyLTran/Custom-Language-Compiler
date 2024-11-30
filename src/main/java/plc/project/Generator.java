@@ -114,7 +114,11 @@ public final class Generator implements Ast.Visitor<Void> {
     @Override
     public Void visit(Ast.Method ast) {
         // The method should begin with the method's JVM type name followed by the method name, both of which are found in the AST
-        print(ast.getFunction().getReturnType().getJvmName() + " " + ast.getName());
+        String returnType = ast.getFunction().getReturnType().getJvmName();
+        if (returnType.equals("Void")) {
+            returnType = "void";
+        }
+        print(returnType + " " + ast.getName());
 
         // Generate a comma-separated list of the method parameters surrounded by parenthesis
         print("(");
