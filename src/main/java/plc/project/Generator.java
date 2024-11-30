@@ -35,7 +35,6 @@ public final class Generator implements Ast.Visitor<Void> {
     // Generate a source, including a definition for the Main class that contains our code as well as the public static void main(String[] args) method used as the entry point for Java
     @Override
     public Void visit(Ast.Source ast) {
-
         // Generate the class header, including the opening brace
         print("public class Main {");
         indent++;
@@ -114,7 +113,6 @@ public final class Generator implements Ast.Visitor<Void> {
     // Generate a method, expressed in Java as a method within our generated class Main
     @Override
     public Void visit(Ast.Method ast) {
-
         // The method should begin with the method's JVM type name followed by the method name, both of which are found in the AST
         print(ast.getFunction().getReturnType().getJvmName() + " " + ast.getName());
 
@@ -173,7 +171,6 @@ public final class Generator implements Ast.Visitor<Void> {
     // Generate a declaration expression
     @Override
     public Void visit(Ast.Statement.Declaration ast) {
-
         // The expression should consist of the type name and the variable name stored in the AST separated by a single space
         print(ast.getVariable().getType().getJvmName(), " ", ast.getVariable().getJvmName());
 
@@ -207,7 +204,6 @@ public final class Generator implements Ast.Visitor<Void> {
     // Generate an If expression
     @Override
     public Void visit(Ast.Statement.If ast) {
-
         // The expression should consist of the if keyword, followed by a single space and the generated condition with the surrounding parenthesis
         print("if (");
         visit(ast.getCondition());
@@ -420,6 +416,11 @@ public final class Generator implements Ast.Visitor<Void> {
     // Generate a function expression
     @Override
     public Void visit(Ast.Expression.Function ast) {
+        // Check if the receiver, such as object.field, is present
+        if (ast.getReceiver().isPresent()) {
+            visit(ast.getReceiver().get());
+            print(".");
+        }
         // The name used should be the jvmName of the function stored in the AST
         print(ast.getFunction().getJvmName());
 
