@@ -322,13 +322,11 @@ public final class Generator implements Ast.Visitor<Void> {
         print("while (");
         visit(ast.getCondition());
         print(") {");
-        indent++;
         if (ast.getStatements().isEmpty()) {
-            newline(indent);
             print("}");
-            indent--;
         }
         else {
+            indent++;
             List<Ast.Statement> whileStatements = ast.getStatements();
             for (int i = 0; i < whileStatements.size(); i++) {
                 newline(indent);
