@@ -76,10 +76,13 @@ public final class Generator implements Ast.Visitor<Void> {
             Ast.Method sourceMethod = sourceMethodList.get(i);
             newline(indent);
             visit(sourceMethod);
+            if (i < sourceMethodList.size() - 1) {
+                newline(0);
+            }
         }
-        newline(0);
         indent--;
-        newline(indent);
+        newline(0);
+        newline(0);
         // Generate the closing brace for the class
         print("}");
         return null;
@@ -135,15 +138,15 @@ public final class Generator implements Ast.Visitor<Void> {
 
         // Following a single space, the opening brace should be generated on the same line
         print(" {");
-        indent++;
 
         // If the statements are empty, the closing brace follows immediately on the same line with no spaces in between
         if (ast.getStatements().isEmpty()) {
+            newline(indent);
             print("}");
-            indent--;
         }
         // Otherwise, each statement is generated on a new line with increased indentation
         else {
+            indent++;
             List<Ast.Statement> methodStatementList = ast.getStatements();
             for (int i = 0; i < methodStatementList.size(); i++) {
                 Ast.Statement methodStatement = methodStatementList.get(i);
