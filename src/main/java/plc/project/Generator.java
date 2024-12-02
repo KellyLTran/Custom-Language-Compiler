@@ -210,15 +210,14 @@ public final class Generator implements Ast.Visitor<Void> {
 
         // Following a single space, the opening brace should be generated on the same line
         print(") {");
-        indent++;
 
         // If the statements are empty, the closing brace follows immediately on the same line with no spaces in between
         if (ast.getThenStatements().isEmpty()) {
             print("}");
-            indent--;
         }
         // Otherwise, each statement is generated on a new line with increased indentation
         else {
+            indent++;
             List<Ast.Statement> thenStatements = ast.getThenStatements();
             for (int i = 0; i < thenStatements.size(); i++) {
                 newline(indent);
@@ -227,20 +226,25 @@ public final class Generator implements Ast.Visitor<Void> {
             // Followed by a closing brace on a new line with the original indentation
             indent--;
             newline(indent);
+            print("}");
         }
-        print("}");
         // If there is an else block, then generate the else keyword on the same line with the same block formatting
         if (!ast.getElseStatements().isEmpty()) {
             print(" else {");
-            indent++;
-            List<Ast.Statement> elseStatements = ast.getElseStatements();
-            for (int i = 0; i < elseStatements.size(); i++) {
-                newline(indent);
-                visit(elseStatements.get(i));
+            if (ast.getElseStatements().isEmpty()) {
+                print("}");
             }
-            indent--;
-            newline(indent);
-            print("}");
+            else {
+                indent++;
+                List<Ast.Statement> elseStatements = ast.getElseStatements();
+                for (int i = 0; i < elseStatements.size(); i++) {
+                    newline(indent);
+                    visit(elseStatements.get(i));
+                }
+                indent--;
+                newline(indent);
+                print("}");
+            }
         }
         // If there is not an else block, then the entire else section is left out of the generated code
         return null;
@@ -293,15 +297,14 @@ public final class Generator implements Ast.Visitor<Void> {
         }
         // Following a single space after the closing parenthesis of the signature, the opening brace should be generated on the same line
         print(" ) {");
-        indent++;
 
         // If the statements are empty, the closing brace follows immediately on the same line with no spaces in between
         if (ast.getStatements().isEmpty()) {
             print("}");
-        indent--;
         }
         // Otherwise, each statement is generated on a new line with increased indentation
         else {
+            indent++;
             List<Ast.Statement> forStatements = ast.getStatements();
             for (int i = 0; i < forStatements.size(); i++) {
                 newline(indent);
