@@ -80,6 +80,42 @@ public final class Lexer {
 
     public Token lexNumber() {
         boolean isDecimal = false;
+
+        // INTEGER: An optional sign + or - can immediately prefix a non-zero integer
+        // DECIMAL: An optional sign + or - can immediately prefix the decimal as positive or negative
+        if (peek("[+-]")) {
+            match("[+-]");
+        }
+
+        // Ensure the number starts with a valid digit
+        if (!peek("[0-9]")) {
+            throw new ParseException("Invalid number format.", chars.index);
+        }
+
+        while (peek("[0-9]")) {
+            match("[0-9]");
+        }
+        // If a decimal point is found, then make isDecimal true and match the digits that follow
+        if (peek("\\.")) {
+            match("\\.");
+            isDecimal = true;
+            if (!peek("[0-9]")) {
+                throw new ParseException("Invalid decimal format.", chars.index);
+            }
+            while (peek("[0-9]")) {
+                match("[0-9]");
+            }
+        }
+        if (isDecimal) {
+            return chars.emit(Token.Type.DECIMAL);
+        }
+        else {
+            return chars.emit(Token.Type.INTEGER);
+        }
+    }
+
+    /*
+
         if (peek("0")) {
             match("0");
             if (peek("[0-9]")) {
@@ -117,6 +153,9 @@ public final class Lexer {
             return chars.emit(Token.Type.INTEGER);
         }
     }
+
+
+     */
     public Token lexCharacter() {
         if (!match("'")) {
             throw new ParseException("Missing Beginning Single Quote.",
