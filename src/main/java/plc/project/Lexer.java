@@ -170,7 +170,8 @@ public final class Lexer {
         else if (match("[<>!=]", "=")) {
             return chars.emit(Token.Type.OPERATOR);
         }
-        else if (match("&&") || match("||")) {
+        // Fixed to ensure compound expression operators are combined into a single token
+        else if (match("&", "&") || match("\\|", "\\|")) {
             return chars.emit(Token.Type.OPERATOR);
         }
         else if (match("[^\\s]")) {
