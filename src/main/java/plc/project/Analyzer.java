@@ -401,6 +401,9 @@ public final class Analyzer implements Ast.Visitor<Void> {
                 || operator.equals(">=") || operator.equals("==") || operator.equals("!=")) {
             requireAssignable(Environment.Type.COMPARABLE, ast.getLeft().getType());
             requireAssignable(Environment.Type.COMPARABLE, ast.getRight().getType());
+            if (!ast.getLeft().getType().equals(ast.getRight().getType())) {
+                throw new RuntimeException("Operands must be of the same type.");
+            }
             ast.setType(Environment.Type.BOOLEAN);
         }
         else if (operator.equals("+")) {
@@ -414,7 +417,10 @@ public final class Analyzer implements Ast.Visitor<Void> {
                     throw new RuntimeException("Left operand is not an Integer or Decimal.");
                 }
                 else {
-                    requireAssignable(ast.getLeft().getType(), ast.getRight().getType());
+                    if (!ast.getLeft().getType().equals(ast.getRight().getType())) {
+                        throw new RuntimeException("Operands must be of the same type.");
+                    }
+                    // requireAssignable(ast.getLeft().getType(), ast.getRight().getType());
                     // Set the result type to the same as the LHS
                     ast.setType(ast.getLeft().getType());
                 }
