@@ -150,20 +150,25 @@ public final class Analyzer implements Ast.Visitor<Void> {
             visit(ast.getValue().get());
 
             // Ensure that the value is assignable to the variable
-            requireAssignable(ast.getValue().get().getType(), ast.getValue().get().getType());
+            //requireAssignable(ast.getValue().get().getType(), ast.getValue().get().getType());
         }
+
+        Environment.Type variableType;
         // If the type of the declared variable is present, it must be the type registered in the Environment with the same name as the one in the AST
         if (ast.getTypeName().isPresent()) {
-
-            // The variable's value is Environment.NIL since it is not used by the analyzer
-            Environment.Variable declaredVariable = scope.defineVariable(ast.getName(), ast.getName(), Environment.getType(ast.getTypeName().get()), false, Environment.NIL);
-            ast.setVariable(declaredVariable);
+            variableType = Environment.getType(ast.getTypeName().get());
         }
         // Otherwise, the variable's type is the type of the value
         else {
-            Environment.Variable declaredVariable = scope.defineVariable(ast.getName(), ast.getName(), ast.getValue().get().getType(), false, Environment.NIL);
-            ast.setVariable(declaredVariable);
+            variableType = ast.getValue().get().getType();
         }
+        // If both are present, ensure that the value is assignable to the variable
+        if (ast.getTypeName().isPresent() && ast.getValue().isPresent()) {
+            requireAssignable(variableType, ast.getValue().get().getType());
+        }
+        // The variable's value is Environment.NIL since it is not used by the analyzer
+        Environment.Variable declaredVariable = scope.defineVariable(ast.getName(), ast.getName(), variableType, false, Environment.NIL);
+        ast.setVariable(declaredVariable);
         return null;
     }
 
