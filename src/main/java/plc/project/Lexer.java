@@ -114,48 +114,6 @@ public final class Lexer {
         }
     }
 
-    /*
-
-        if (peek("0")) {
-            match("0");
-            if (peek("[0-9]")) {
-                match("[0-9]");
-                return new Token(Token.Type.INTEGER, "", chars.index);
-            }
-        }
-        if (peek("[+-]")) {
-            match("[+-]");
-            if (peek("0")) {
-                match("0");
-                return new Token(Token.Type.INTEGER, "", chars.index);
-            }
-        }
-        while (chars.has(0)) {
-            if (peek("[0-9]")) {
-                match("[0-9]");
-            }
-            else if (peek("\\.") && chars.has(1) &&
-                    Character.isDigit(chars.get(1))) {
-                isDecimal = true;
-                match("\\.");
-                while (peek("[0-9]")) {
-                    match("[0-9]");
-                }
-            }
-            else {
-                break;
-            }
-        }
-        if (isDecimal) {
-            return chars.emit(Token.Type.DECIMAL);
-        }
-        else {
-            return chars.emit(Token.Type.INTEGER);
-        }
-    }
-
-
-     */
     public Token lexCharacter() {
         if (!match("'")) {
             throw new ParseException("Missing Beginning Single Quote.",

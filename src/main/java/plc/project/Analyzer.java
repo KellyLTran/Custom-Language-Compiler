@@ -15,6 +15,9 @@ public final class Analyzer implements Ast.Visitor<Void> {
     public Scope scope;
     private Ast.Method method;
 
+    // Add private returnType variable to handle cases of missing return type
+    private Environment.Type currentReturnType;
+
     public Analyzer(Scope parent) {
         scope = new Scope(parent);
         scope.defineFunction("print", "System.out.println", Arrays.asList(Environment.Type.ANY), Environment.Type.NIL, args -> Environment.NIL);
@@ -50,6 +53,7 @@ public final class Analyzer implements Ast.Visitor<Void> {
         return null;
     }
 
+
     // Define a function in the current scope based on certain conditions and set it in the Ast (Ast.Field#setVariable)
     @Override
     public Void visit(Ast.Field ast) {
@@ -81,7 +85,6 @@ public final class Analyzer implements Ast.Visitor<Void> {
             String typeName = methodParTypeNames.get(i);
             methodParTypes.add(Environment.getType(typeName));
         }
-        // Coordinate with Ast.Statement.Return and save the expected return type in a variable so it is known
         Environment.Type returnType;
         if (ast.getReturnTypeName().isPresent()) {
             returnType = Environment.getType(ast.getReturnTypeName().get());
@@ -93,6 +96,10 @@ public final class Analyzer implements Ast.Visitor<Void> {
         // The function's name and jvmName are both the name of the method
         // The method's function is args -> Environment.NIL, always returning nil since it is not used by the analyzer
         ast.setFunction(scope.defineFunction(ast.getName(), ast.getName(), methodParTypes, returnType, args -> Environment.NIL));
+
+        // Coordinate with Ast.Statement.Return and save the expected return type in a variable so it is known
+        Environment.Type previousReturnType = currentReturnType;
+        currentReturnType = returnType;
 
         // Visit all method's statements inside a new scope containing variables for each parameter
         // Unlike fields, this is done after the method is defined to allow for recursive methods
@@ -113,6 +120,7 @@ public final class Analyzer implements Ast.Visitor<Void> {
         }
         finally {
             scope = previousScope;
+            currentReturnType = previousReturnType;
         }
         return null;
     }
@@ -304,12 +312,16 @@ public final class Analyzer implements Ast.Visitor<Void> {
     // Validate a return statement
     @Override
     public Void visit(Ast.Statement.Return ast) {
+        // Coordinate with Ast.Method so the expected return type is known
+        if (currentReturnType == null) {
+            throw new RuntimeException("Return statement not in a method.");
+        }
         visit(ast.getValue());
-        Environment.Variable returnType = scope.lookupVariable("returnType");
 
         // Ensure that the value is assignable to the return type of the function that the statement is in
-        requireAssignable(returnType.getType(), ast.getValue().getType());
+        requireAssignable(currentReturnType, ast.getValue().getType());
         return null;
+
     }
 
     // Validate and set type of the literal
