@@ -141,7 +141,6 @@ public final class Generator implements Ast.Visitor<Void> {
 
         // If the statements are empty, the closing brace follows immediately on the same line with no spaces in between
         if (ast.getStatements().isEmpty()) {
-            newline(indent);
             print("}");
         }
         // Otherwise, each statement is generated on a new line with increased indentation
