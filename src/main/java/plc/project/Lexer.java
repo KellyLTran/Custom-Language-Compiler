@@ -28,7 +28,7 @@ public final class Lexer {
         List<Token> lexTokens = new ArrayList<Token>();
         while (chars.has(0)) {
             // If the current character is a whitespace, advance to the next character and reset the token size
-            if (peek("\\s")) {
+            if (peek("[ \b\n\r\t]")) {
                 chars.advance();
                 chars.skip();
             }
@@ -80,34 +80,48 @@ public final class Lexer {
 
     public Token lexNumber() {
         boolean isDecimal = false;
-        if (peek("0")) {
-            match("0");
-            if (peek("[0-9]")) {
-                match("[0-9]");
-                return new Token(Token.Type.INTEGER, "", chars.index);
-            }
-        }
+
+        // INTEGER: An optional sign + or - can immediately prefix a non-zero integer
+        // DECIMAL: An optional sign + or - can immediately prefix the decimal as positive or negative
         if (peek("[+-]")) {
             match("[+-]");
-            if (peek("0")) {
-                match("0");
-                return new Token(Token.Type.INTEGER, "", chars.index);
+        }
+
+        // Ensure the number starts with a valid digit
+        if (!peek("[0-9]")) {
+            throw new ParseException("Invalid number format.", chars.index);
+        }
+
+        if (peek("0")) {
+            match("0");
+
+            // If a digit follows a leading zero, leading zeros are not permitted within the same integer
+            if (peek("[0-9]")) {
+                return chars.emit(Token.Type.INTEGER);
+            }
+            // If a decimal point follows a leading zero, then it is a decimal
+            else if (peek("\\.")) {
+                match("\\.");
+                isDecimal = true;
+                if (!peek("[0-9]")) {
+                    throw new ParseException("Invalid decimal format.", chars.index);
+                }
             }
         }
-        while (chars.has(0)) {
-            if (peek("[0-9]")) {
+        else {
+            match("[1-9]");
+            while (peek("[0-9]")) {
                 match("[0-9]");
             }
-            else if (peek("\\.") && chars.has(1) &&
-                    Character.isDigit(chars.get(1))) {
-                isDecimal = true;
+            if (peek("\\.")) {
                 match("\\.");
+                isDecimal = true;
+                if (!peek("[0-9]")) {
+                    throw new ParseException("Invalid decimal format.", chars.index);
+                }
                 while (peek("[0-9]")) {
                     match("[0-9]");
                 }
-            }
-            else {
-                break;
             }
         }
         if (isDecimal) {
@@ -117,6 +131,7 @@ public final class Lexer {
             return chars.emit(Token.Type.INTEGER);
         }
     }
+
     public Token lexCharacter() {
         if (!match("'")) {
             throw new ParseException("Missing Beginning Single Quote.",
@@ -134,6 +149,7 @@ public final class Lexer {
         }
         return chars.emit(Token.Type.CHARACTER);
     }
+
     public Token lexString() {
         if (!match("\"")) {
             throw new ParseException("Missing Beginning Double Quote.",
@@ -158,11 +174,13 @@ public final class Lexer {
         }
         return chars.emit(Token.Type.STRING);
     }
+
     public void lexEscape() {
         if (!match("[bnrt'\"\\\\]")) {
             throw new ParseException("Invalid escape sequence.", chars.index);
         }
     }
+
     public Token lexOperator() {
         if (match(";")) {
             return chars.emit(Token.Type.OPERATOR);
@@ -170,14 +188,16 @@ public final class Lexer {
         else if (match("[<>!=]", "=")) {
             return chars.emit(Token.Type.OPERATOR);
         }
-        else if (match("&&") || match("||")) {
+        // Fixed to ensure compound expression operators are combined into a single token
+        else if (match("&", "&") || match("\\|", "\\|")) {
             return chars.emit(Token.Type.OPERATOR);
         }
-        else if (match("[^\\s]")) {
+        else if (match("[^ \b\r\n\t]")) {
             return chars.emit(Token.Type.OPERATOR);
         }
         return new Token(Token.Type.OPERATOR, "", chars.index);
     }
+
     /**
      * Returns true if the next sequence of characters match the given patterns,
      * which should be a regex. For example, {@code peek("a", "b", "c")} would

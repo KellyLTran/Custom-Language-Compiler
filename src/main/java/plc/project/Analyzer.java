@@ -15,6 +15,9 @@ public final class Analyzer implements Ast.Visitor<Void> {
     public Scope scope;
     private Ast.Method method;
 
+    // Add private returnType variable to handle cases of missing return type
+    private Environment.Type currentReturnType;
+
     public Analyzer(Scope parent) {
         scope = new Scope(parent);
         scope.defineFunction("print", "System.out.println", Arrays.asList(Environment.Type.ANY), Environment.Type.NIL, args -> Environment.NIL);
@@ -50,6 +53,7 @@ public final class Analyzer implements Ast.Visitor<Void> {
         return null;
     }
 
+
     // Define a function in the current scope based on certain conditions and set it in the Ast (Ast.Field#setVariable)
     @Override
     public Void visit(Ast.Field ast) {
@@ -81,7 +85,6 @@ public final class Analyzer implements Ast.Visitor<Void> {
             String typeName = methodParTypeNames.get(i);
             methodParTypes.add(Environment.getType(typeName));
         }
-        // Coordinate with Ast.Statement.Return and save the expected return type in a variable so it is known
         Environment.Type returnType;
         if (ast.getReturnTypeName().isPresent()) {
             returnType = Environment.getType(ast.getReturnTypeName().get());
@@ -93,6 +96,10 @@ public final class Analyzer implements Ast.Visitor<Void> {
         // The function's name and jvmName are both the name of the method
         // The method's function is args -> Environment.NIL, always returning nil since it is not used by the analyzer
         ast.setFunction(scope.defineFunction(ast.getName(), ast.getName(), methodParTypes, returnType, args -> Environment.NIL));
+
+        // Coordinate with Ast.Statement.Return and save the expected return type in a variable so it is known
+        Environment.Type previousReturnType = currentReturnType;
+        currentReturnType = returnType;
 
         // Visit all method's statements inside a new scope containing variables for each parameter
         // Unlike fields, this is done after the method is defined to allow for recursive methods
@@ -113,6 +120,7 @@ public final class Analyzer implements Ast.Visitor<Void> {
         }
         finally {
             scope = previousScope;
+            currentReturnType = previousReturnType;
         }
         return null;
     }
@@ -142,20 +150,25 @@ public final class Analyzer implements Ast.Visitor<Void> {
             visit(ast.getValue().get());
 
             // Ensure that the value is assignable to the variable
-            requireAssignable(ast.getValue().get().getType(), ast.getValue().get().getType());
+            //requireAssignable(ast.getValue().get().getType(), ast.getValue().get().getType());
         }
+
+        Environment.Type variableType;
         // If the type of the declared variable is present, it must be the type registered in the Environment with the same name as the one in the AST
         if (ast.getTypeName().isPresent()) {
-
-            // The variable's value is Environment.NIL since it is not used by the analyzer
-            Environment.Variable declaredVariable = scope.defineVariable(ast.getName(), ast.getName(), Environment.getType(ast.getTypeName().get()), false, Environment.NIL);
-            ast.setVariable(declaredVariable);
+            variableType = Environment.getType(ast.getTypeName().get());
         }
         // Otherwise, the variable's type is the type of the value
         else {
-            Environment.Variable declaredVariable = scope.defineVariable(ast.getName(), ast.getName(), ast.getValue().get().getType(), false, Environment.NIL);
-            ast.setVariable(declaredVariable);
+            variableType = ast.getValue().get().getType();
         }
+        // If both are present, ensure that the value is assignable to the variable
+        if (ast.getTypeName().isPresent() && ast.getValue().isPresent()) {
+            requireAssignable(variableType, ast.getValue().get().getType());
+        }
+        // The variable's value is Environment.NIL since it is not used by the analyzer
+        Environment.Variable declaredVariable = scope.defineVariable(ast.getName(), ast.getName(), variableType, false, Environment.NIL);
+        ast.setVariable(declaredVariable);
         return null;
     }
 
@@ -304,12 +317,16 @@ public final class Analyzer implements Ast.Visitor<Void> {
     // Validate a return statement
     @Override
     public Void visit(Ast.Statement.Return ast) {
+        // Coordinate with Ast.Method so the expected return type is known
+        if (currentReturnType == null) {
+            throw new RuntimeException("Return statement not in a method.");
+        }
         visit(ast.getValue());
-        Environment.Variable returnType = scope.lookupVariable("returnType");
 
         // Ensure that the value is assignable to the return type of the function that the statement is in
-        requireAssignable(returnType.getType(), ast.getValue().getType());
+        requireAssignable(currentReturnType, ast.getValue().getType());
         return null;
+
     }
 
     // Validate and set type of the literal
@@ -384,6 +401,9 @@ public final class Analyzer implements Ast.Visitor<Void> {
                 || operator.equals(">=") || operator.equals("==") || operator.equals("!=")) {
             requireAssignable(Environment.Type.COMPARABLE, ast.getLeft().getType());
             requireAssignable(Environment.Type.COMPARABLE, ast.getRight().getType());
+            if (!ast.getLeft().getType().equals(ast.getRight().getType())) {
+                throw new RuntimeException("Operands must be of the same type.");
+            }
             ast.setType(Environment.Type.BOOLEAN);
         }
         else if (operator.equals("+")) {
@@ -397,7 +417,10 @@ public final class Analyzer implements Ast.Visitor<Void> {
                     throw new RuntimeException("Left operand is not an Integer or Decimal.");
                 }
                 else {
-                    requireAssignable(ast.getLeft().getType(), ast.getRight().getType());
+                    if (!ast.getLeft().getType().equals(ast.getRight().getType())) {
+                        throw new RuntimeException("Operands must be of the same type.");
+                    }
+                    // requireAssignable(ast.getLeft().getType(), ast.getRight().getType());
                     // Set the result type to the same as the LHS
                     ast.setType(ast.getLeft().getType());
                 }
