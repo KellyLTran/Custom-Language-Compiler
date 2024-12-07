@@ -28,7 +28,7 @@ public final class Lexer {
         List<Token> lexTokens = new ArrayList<Token>();
         while (chars.has(0)) {
             // If the current character is a whitespace, advance to the next character and reset the token size
-            if (peek("\\s")) {
+            if (peek("[ \b\n\r\t]")) {
                 chars.advance();
                 chars.skip();
             }
@@ -131,6 +131,7 @@ public final class Lexer {
         }
         return chars.emit(Token.Type.CHARACTER);
     }
+
     public Token lexString() {
         if (!match("\"")) {
             throw new ParseException("Missing Beginning Double Quote.",
@@ -155,11 +156,13 @@ public final class Lexer {
         }
         return chars.emit(Token.Type.STRING);
     }
+
     public void lexEscape() {
         if (!match("[bnrt'\"\\\\]")) {
             throw new ParseException("Invalid escape sequence.", chars.index);
         }
     }
+
     public Token lexOperator() {
         if (match(";")) {
             return chars.emit(Token.Type.OPERATOR);
@@ -171,11 +174,12 @@ public final class Lexer {
         else if (match("&", "&") || match("\\|", "\\|")) {
             return chars.emit(Token.Type.OPERATOR);
         }
-        else if (match("[^\\s]")) {
+        else if (match("[^ \b\r\n\t]")) {
             return chars.emit(Token.Type.OPERATOR);
         }
         return new Token(Token.Type.OPERATOR, "", chars.index);
     }
+
     /**
      * Returns true if the next sequence of characters match the given patterns,
      * which should be a regex. For example, {@code peek("a", "b", "c")} would
