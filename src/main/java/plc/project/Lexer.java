@@ -92,18 +92,36 @@ public final class Lexer {
             throw new ParseException("Invalid number format.", chars.index);
         }
 
-        while (peek("[0-9]")) {
-            match("[0-9]");
-        }
-        // If a decimal point is found, then make isDecimal true and match the digits that follow
-        if (peek("\\.")) {
-            match("\\.");
-            isDecimal = true;
-            if (!peek("[0-9]")) {
-                throw new ParseException("Invalid decimal format.", chars.index);
+        if (peek("0")) {
+            match("0");
+
+            // If a digit follows a leading zero, leading zeros are not permitted within the same integer
+            if (peek("[0-9]")) {
+                return chars.emit(Token.Type.INTEGER);
             }
+            // If a decimal point follows a leading zero, then it is a decimal
+            else if (peek("\\.")) {
+                match("\\.");
+                isDecimal = true;
+                if (!peek("[0-9]")) {
+                    throw new ParseException("Invalid decimal format.", chars.index);
+                }
+            }
+        }
+        else {
+            match("[1-9]");
             while (peek("[0-9]")) {
                 match("[0-9]");
+            }
+            if (peek("\\.")) {
+                match("\\.");
+                isDecimal = true;
+                if (!peek("[0-9]")) {
+                    throw new ParseException("Invalid decimal format.", chars.index);
+                }
+                while (peek("[0-9]")) {
+                    match("[0-9]");
+                }
             }
         }
         if (isDecimal) {
